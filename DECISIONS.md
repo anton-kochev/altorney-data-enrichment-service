@@ -126,4 +126,63 @@ Each decision follows this format:
 
 ---
 
+### 009. FrozenDictionary with Volatile for Thread-Safe Read-Only Data
+
+**Decision**: Use `FrozenDictionary<int, string>` with `volatile` keyword for storing product reference data.
+
+**Context**: Product data is loaded once at startup and accessed concurrently by multiple request threads. Need an efficient, thread-safe data structure for O(1) lookups.
+
+**Alternatives Considered**:
+- `ConcurrentDictionary<int, string>` - thread-safe but optimized for concurrent writes
+- `ImmutableDictionary<int, string>` - immutable but slower lookups
+- `Dictionary<int, string>` with locks - manual synchronization overhead
+
+**Rationale**: `FrozenDictionary` (.NET 8+) is specifically optimized for read-only scenarios with lower memory overhead and faster lookups than alternatives. The `volatile` keyword ensures visibility across threads during potential hot-reload scenarios, preventing stale reads from CPU cache.
+
+---
+
+### 010. Sep Library for CSV Parsing
+
+**Decision**: Use [Sep](https://github.com/nietras/Sep) (nietras.Sep) for CSV parsing instead of CsvHelper.
+
+**Context**: Need high-performance CSV parsing for loading product reference data at startup and processing trade files.
+
+**Alternatives Considered**:
+- CsvHelper - most popular, feature-rich but slower
+- Sylvan.Data.Csv - good performance, more complex API
+- Manual parsing with `string.Split` - error-prone, no RFC 4180 compliance
+
+**Rationale**: Sep is the fastest .NET CSV parser with zero-allocation design. Benchmarks show 2-5x better performance than CsvHelper. The API is simple (`row["columnName"].Span`) and it handles RFC 4180 edge cases correctly. Ideal for high-throughput trade processing requirements.
+
+---
+
+### 011. Test-Driven Development
+
+**Decision**: Follow Test-Driven Development (TDD) methodology - write tests before implementation.
+
+**Context**: Need a development approach that ensures high test coverage and drives clean, testable design.
+
+**Alternatives Considered**:
+- Test-after development - write tests after implementation
+- Behavior-Driven Development (BDD) - higher-level specification tests
+
+**Rationale**: TDD ensures every feature has test coverage from the start, catches design issues early, and produces more modular code. Writing tests first clarifies requirements and acceptance criteria before coding begins. The project uses xUnit with FluentAssertions and FakeLogger for clean, readable tests.
+
+---
+
+### 012. Source-Generated Logging
+
+**Decision**: Use source-generated logging with `[LoggerMessage]` attribute instead of traditional `ILogger` extension methods.
+
+**Context**: Need efficient, structured logging throughout the application with minimal runtime overhead.
+
+**Alternatives Considered**:
+- Traditional `ILogger.LogInformation()` extension methods - allocates strings and objects
+- Serilog with message templates - third-party dependency
+- Manual `ILogger.Log()` calls - verbose and error-prone
+
+**Rationale**: Source-generated logging (introduced in .NET 6) provides zero-allocation logging by generating optimal code at compile time. Benefits include: compile-time validation of message templates, consistent EventIds, better performance in high-throughput scenarios. Requires `partial` class and methods but eliminates runtime string formatting overhead.
+
+---
+
 <!-- Add new decisions above this line -->
