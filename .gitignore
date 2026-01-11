@@ -54,3 +54,5 @@ TestResult.xml
 nunit-*.xml
 /.idea
 /.idea
+src/Api/Data/largeSizeProduct.csv
+src/Api/Data/middleSizeTrade.csv

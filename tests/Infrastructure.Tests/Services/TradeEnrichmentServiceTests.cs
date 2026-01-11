@@ -926,7 +926,10 @@ public class TradeEnrichmentServiceTests : IDisposable
     [Fact]
     public async Task EnrichTrades_WithHighConcurrency_ShouldLogEachMissingProductOnce()
     {
-        // Arrange - Create many trades with same missing product IDs to stress test deduplication
+        // Arrange - Create fresh logger and service to avoid shared state from other tests
+        var concurrencyLogger = new FakeLogger<TradeEnrichmentService>();
+        var concurrencySut = new TradeEnrichmentService(_mockProductLookupService.Object, concurrencyLogger);
+
         var trades = Enumerable.Range(1, 100).Select(i => new TradeInputDto
         {
             Date = "20231215",
@@ -945,28 +948,28 @@ public class TradeEnrichmentServiceTests : IDisposable
 
         // Act - Run with higher concurrency to stress test
         var tasks = Enumerable.Range(0, 20).Select(_ =>
-            Task.Run(() => _sut.EnrichTrades(trades))
+            Task.Run(() => concurrencySut.EnrichTrades(trades))
         ).ToArray();
 
         await Task.WhenAll(tasks);
 
-        // Assert - Should log exactly 5 warnings (one per unique missing product: 0, 1, 2, 3, 4)
-        // even though we processed 2000 trades (20 tasks x 100 trades) with only 5 unique IDs
-        var logRecords = _fakeLogger.Collector.GetSnapshot();
+        // Assert - Should log exactly 4 warnings (one per unique missing product: 1-4)
+        // Product ID 0 is invalid and gets rejected during validation
+        var logRecords = concurrencyLogger.Collector.GetSnapshot();
         var warningLogs = logRecords.Where(r => r.Level == LogLevel.Warning).ToList();
 
-        // Note: Product ID 0 is invalid and gets rejected during validation, so only 1-4 are logged
         warningLogs.Should().HaveCount(4,
             "each unique missing product ID (1-4) should be logged exactly once regardless of concurrency");
 
-        for (int i = 1; i <= 4; i++)
-        {
-            var productIdToCheck = i.ToString();
-            warningLogs.Should().ContainSingle(r =>
-                    r.StructuredState != null &&
-                    r.StructuredState.Any(s => s.Key == "ProductId" && (s.Value != null && s.Value.ToString() == productIdToCheck)),
-                $"product ID {i} should be logged exactly once");
-        }
+        // Use structured state to check ProductId - more robust than string matching
+        var loggedProductIds = warningLogs
+            .Select(r => r.StructuredState?.FirstOrDefault(s => s.Key == "ProductId").Value)
+            .Where(v => v != null)
+            .Select(v => v!.ToString())
+            .ToHashSet();
+
+        loggedProductIds.Should().BeEquivalentTo(["1", "2", "3", "4"],
+            "each unique missing product ID should be logged exactly once");
     }
 
     [Fact]
@@ -1403,6 +1406,484 @@ public class TradeEnrichmentServiceTests : IDisposable
         var state = errorLog.StructuredState!.ToDictionary(x => x.Key, x => x.Value);
 
         state.Should().ContainKey("MissingFields").WhoseValue.Should().Contain("date");
+    }
+
+    #endregion
+
+    #region Date Validation Error Logging (US-005)
+
+    [Fact]
+    public void EnrichTrade_WithHyphenatedDate_ShouldLogErrorWithFormatReason()
+    {
+        // Arrange
+        var tradeInput = new TradeInputDto
+        {
+            Date = "2023-12-15", // Wrong format (should be yyyyMMdd)
+            ProductId = "123",
+            Currency = "USD",
+            Price = "99.99"
+        };
+
+        // Act
+        var result = _sut.EnrichTrade(tradeInput);
+
+        // Assert
+        result.Should().BeNull();
+        var logRecords = _fakeLogger.Collector.GetSnapshot();
+        var errorLog = logRecords.Should().ContainSingle(r => r.Level == LogLevel.Error).Which;
+
+        errorLog.StructuredState.Should().NotBeNull();
+        var state = errorLog.StructuredState!.ToDictionary(x => x.Key, x => x.Value);
+
+        state.Should().ContainKey("Date").WhoseValue.Should().Be("2023-12-15");
+        state.Should().ContainKey("ProductId").WhoseValue.Should().Be("123");
+        state.Should().ContainKey("Currency").WhoseValue.Should().Be("USD");
+        state.Should().ContainKey("Price").WhoseValue.Should().Be("99.99");
+        state.Should().ContainKey("Reason").WhoseValue.Should().Contain("yyyyMMdd");
+    }
+
+    [Fact]
+    public void EnrichTrade_WithSlashedDate_ShouldLogErrorWithFormatReason()
+    {
+        // Arrange
+        var tradeInput = new TradeInputDto
+        {
+            Date = "12/15/2023",
+            ProductId = "456",
+            Currency = "EUR",
+            Price = "50.00"
+        };
+
+        // Act
+        var result = _sut.EnrichTrade(tradeInput);
+
+        // Assert
+        result.Should().BeNull();
+        var logRecords = _fakeLogger.Collector.GetSnapshot();
+        var errorLog = logRecords.Should().ContainSingle(r => r.Level == LogLevel.Error).Which;
+
+        errorLog.StructuredState.Should().NotBeNull();
+        var state = errorLog.StructuredState!.ToDictionary(x => x.Key, x => x.Value);
+        state.Should().ContainKey("Reason").WhoseValue.Should().Contain("yyyyMMdd");
+    }
+
+    [Fact]
+    public void EnrichTrade_WithTooShortDate_ShouldLogErrorWithFormatReason()
+    {
+        // Arrange
+        var tradeInput = new TradeInputDto
+        {
+            Date = "2023121", // 7 chars instead of 8
+            ProductId = "123",
+            Currency = "USD",
+            Price = "10.00"
+        };
+
+        // Act
+        var result = _sut.EnrichTrade(tradeInput);
+
+        // Assert
+        result.Should().BeNull();
+        var logRecords = _fakeLogger.Collector.GetSnapshot();
+        logRecords.Should().ContainSingle(r => r.Level == LogLevel.Error);
+    }
+
+    [Fact]
+    public void EnrichTrade_WithTooLongDate_ShouldLogErrorWithFormatReason()
+    {
+        // Arrange
+        var tradeInput = new TradeInputDto
+        {
+            Date = "202312150", // 9 chars instead of 8
+            ProductId = "123",
+            Currency = "USD",
+            Price = "10.00"
+        };
+
+        // Act
+        var result = _sut.EnrichTrade(tradeInput);
+
+        // Assert
+        result.Should().BeNull();
+        var logRecords = _fakeLogger.Collector.GetSnapshot();
+        logRecords.Should().ContainSingle(r => r.Level == LogLevel.Error);
+    }
+
+    [Fact]
+    public void EnrichTrade_WithAlphabeticDate_ShouldLogErrorWithFormatReason()
+    {
+        // Arrange
+        var tradeInput = new TradeInputDto
+        {
+            Date = "2023Dec5",
+            ProductId = "123",
+            Currency = "USD",
+            Price = "10.00"
+        };
+
+        // Act
+        var result = _sut.EnrichTrade(tradeInput);
+
+        // Assert
+        result.Should().BeNull();
+        var logRecords = _fakeLogger.Collector.GetSnapshot();
+        logRecords.Should().ContainSingle(r => r.Level == LogLevel.Error);
+    }
+
+    [Fact]
+    public void EnrichTrade_WithTwoDigitYear_ShouldLogErrorWithFormatReason()
+    {
+        // Arrange
+        var tradeInput = new TradeInputDto
+        {
+            Date = "23121500", // 2-digit year format
+            ProductId = "123",
+            Currency = "USD",
+            Price = "10.00"
+        };
+
+        // Act
+        var result = _sut.EnrichTrade(tradeInput);
+
+        // Assert
+        result.Should().BeNull();
+        var logRecords = _fakeLogger.Collector.GetSnapshot();
+        logRecords.Should().ContainSingle(r => r.Level == LogLevel.Error);
+    }
+
+    [Fact]
+    public void EnrichTrade_WithInvalidMonth13_ShouldLogErrorWithCalendarReason()
+    {
+        // Arrange
+        var tradeInput = new TradeInputDto
+        {
+            Date = "20231315", // Month 13 doesn't exist
+            ProductId = "123",
+            Currency = "USD",
+            Price = "10.00"
+        };
+
+        // Act
+        var result = _sut.EnrichTrade(tradeInput);
+
+        // Assert
+        result.Should().BeNull();
+        var logRecords = _fakeLogger.Collector.GetSnapshot();
+        var errorLog = logRecords.Should().ContainSingle(r => r.Level == LogLevel.Error).Which;
+
+        errorLog.StructuredState.Should().NotBeNull();
+        var state = errorLog.StructuredState!.ToDictionary(x => x.Key, x => x.Value);
+        state.Should().ContainKey("Reason").WhoseValue.Should().Contain("valid");
+    }
+
+    [Fact]
+    public void EnrichTrade_WithInvalidDay32_ShouldLogErrorWithCalendarReason()
+    {
+        // Arrange
+        var tradeInput = new TradeInputDto
+        {
+            Date = "20231232", // 32nd day doesn't exist
+            ProductId = "123",
+            Currency = "USD",
+            Price = "10.00"
+        };
+
+        // Act
+        var result = _sut.EnrichTrade(tradeInput);
+
+        // Assert
+        result.Should().BeNull();
+        var logRecords = _fakeLogger.Collector.GetSnapshot();
+        logRecords.Should().ContainSingle(r => r.Level == LogLevel.Error);
+    }
+
+    [Fact]
+    public void EnrichTrade_WithFeb29NonLeapYear_ShouldLogErrorWithCalendarReason()
+    {
+        // Arrange
+        var tradeInput = new TradeInputDto
+        {
+            Date = "20230229", // 2023 is not a leap year
+            ProductId = "123",
+            Currency = "USD",
+            Price = "10.00"
+        };
+
+        // Act
+        var result = _sut.EnrichTrade(tradeInput);
+
+        // Assert
+        result.Should().BeNull();
+        var logRecords = _fakeLogger.Collector.GetSnapshot();
+        logRecords.Should().ContainSingle(r => r.Level == LogLevel.Error);
+    }
+
+    [Fact]
+    public void EnrichTrade_WithFeb30_ShouldLogErrorWithCalendarReason()
+    {
+        // Arrange
+        var tradeInput = new TradeInputDto
+        {
+            Date = "20240230", // February never has 30 days
+            ProductId = "123",
+            Currency = "USD",
+            Price = "10.00"
+        };
+
+        // Act
+        var result = _sut.EnrichTrade(tradeInput);
+
+        // Assert
+        result.Should().BeNull();
+        var logRecords = _fakeLogger.Collector.GetSnapshot();
+        logRecords.Should().ContainSingle(r => r.Level == LogLevel.Error);
+    }
+
+    [Fact]
+    public void EnrichTrade_WithApril31_ShouldLogErrorWithCalendarReason()
+    {
+        // Arrange
+        var tradeInput = new TradeInputDto
+        {
+            Date = "20230431", // April has 30 days
+            ProductId = "123",
+            Currency = "USD",
+            Price = "10.00"
+        };
+
+        // Act
+        var result = _sut.EnrichTrade(tradeInput);
+
+        // Assert
+        result.Should().BeNull();
+        var logRecords = _fakeLogger.Collector.GetSnapshot();
+        logRecords.Should().ContainSingle(r => r.Level == LogLevel.Error);
+    }
+
+    [Fact]
+    public void EnrichTrade_WithZeroMonth_ShouldLogErrorWithCalendarReason()
+    {
+        // Arrange
+        var tradeInput = new TradeInputDto
+        {
+            Date = "20230015", // Month 0 is invalid
+            ProductId = "123",
+            Currency = "USD",
+            Price = "10.00"
+        };
+
+        // Act
+        var result = _sut.EnrichTrade(tradeInput);
+
+        // Assert
+        result.Should().BeNull();
+        var logRecords = _fakeLogger.Collector.GetSnapshot();
+        logRecords.Should().ContainSingle(r => r.Level == LogLevel.Error);
+    }
+
+    [Fact]
+    public void EnrichTrade_WithZeroDay_ShouldLogErrorWithCalendarReason()
+    {
+        // Arrange
+        var tradeInput = new TradeInputDto
+        {
+            Date = "20231200", // Day 0 is invalid
+            ProductId = "123",
+            Currency = "USD",
+            Price = "10.00"
+        };
+
+        // Act
+        var result = _sut.EnrichTrade(tradeInput);
+
+        // Assert
+        result.Should().BeNull();
+        var logRecords = _fakeLogger.Collector.GetSnapshot();
+        logRecords.Should().ContainSingle(r => r.Level == LogLevel.Error);
+    }
+
+    [Fact]
+    public void EnrichTrades_WithMultipleInvalidDates_ShouldLogEachError()
+    {
+        // Arrange - 3 trades with different invalid dates (should NOT be deduplicated)
+        var trades = new[]
+        {
+            new TradeInputDto { Date = "2023-12-15", ProductId = "1", Currency = "USD", Price = "10.00" },
+            new TradeInputDto { Date = "invalid", ProductId = "2", Currency = "EUR", Price = "20.00" },
+            new TradeInputDto { Date = "20231332", ProductId = "3", Currency = "GBP", Price = "30.00" }
+        };
+
+        // Act
+        var (_, summary) = _sut.EnrichTrades(trades);
+
+        // Assert - Each invalid date should be logged (no deduplication like missing products)
+        var logRecords = _fakeLogger.Collector.GetSnapshot();
+        var errorLogs = logRecords.Where(r => r.Level == LogLevel.Error).ToList();
+
+        errorLogs.Should().HaveCount(3, "each invalid date should be logged, no deduplication");
+        summary.RowsDiscardedDueToValidation.Should().Be(3);
+    }
+
+    [Fact]
+    public void EnrichTrade_WithValidDate_ShouldNotLogError()
+    {
+        // Arrange
+        var tradeInput = new TradeInputDto
+        {
+            Date = "20231215",
+            ProductId = "123",
+            Currency = "USD",
+            Price = "99.99"
+        };
+
+        _mockProductLookupService
+            .Setup(p => p.TryGetProductName(123, out It.Ref<string?>.IsAny))
+            .Returns((int id, out string? name) =>
+            {
+                name = "Test Product";
+                return true;
+            });
+
+        // Act
+        var result = _sut.EnrichTrade(tradeInput);
+
+        // Assert
+        result.Should().NotBeNull();
+        var logRecords = _fakeLogger.Collector.GetSnapshot();
+        logRecords.Should().NotContain(r => r.Level == LogLevel.Error);
+    }
+
+    [Fact]
+    public void EnrichTrade_WithInvalidDate_ShouldNotCallProductLookup()
+    {
+        // Arrange
+        var tradeInput = new TradeInputDto
+        {
+            Date = "invalid",
+            ProductId = "123",
+            Currency = "USD",
+            Price = "10.00"
+        };
+
+        // Act
+        var result = _sut.EnrichTrade(tradeInput);
+
+        // Assert
+        result.Should().BeNull();
+        _mockProductLookupService.Verify(
+            p => p.TryGetProductName(It.IsAny<int>(), out It.Ref<string?>.IsAny),
+            Times.Never,
+            "Product lookup should not be called when date validation fails");
+    }
+
+    [Fact]
+    public void EnrichTrade_WithInvalidDate_ShouldLogAllTradeFields()
+    {
+        // Arrange
+        var tradeInput = new TradeInputDto
+        {
+            Date = "bad-date",
+            ProductId = "999",
+            Currency = "CHF",
+            Price = "1234.56"
+        };
+
+        // Act
+        var result = _sut.EnrichTrade(tradeInput);
+
+        // Assert
+        result.Should().BeNull();
+        var logRecords = _fakeLogger.Collector.GetSnapshot();
+        var errorLog = logRecords.Should().ContainSingle(r => r.Level == LogLevel.Error).Which;
+
+        errorLog.StructuredState.Should().NotBeNull();
+        var state = errorLog.StructuredState!.ToDictionary(x => x.Key, x => x.Value);
+
+        // Verify all trade fields are present in structured logging
+        state.Should().ContainKey("Date").WhoseValue.Should().Be("bad-date");
+        state.Should().ContainKey("ProductId").WhoseValue.Should().Be("999");
+        state.Should().ContainKey("Currency").WhoseValue.Should().Be("CHF");
+        state.Should().ContainKey("Price").WhoseValue.Should().Be("1234.56");
+        state.Should().ContainKey("Reason");
+    }
+
+    [Fact]
+    public void EnrichTrade_WithInvalidDate_ShouldLogAtErrorLevel()
+    {
+        // Arrange
+        var tradeInput = new TradeInputDto
+        {
+            Date = "20231332",
+            ProductId = "123",
+            Currency = "USD",
+            Price = "10.00"
+        };
+
+        // Act
+        var result = _sut.EnrichTrade(tradeInput);
+
+        // Assert
+        result.Should().BeNull();
+        var logRecords = _fakeLogger.Collector.GetSnapshot();
+
+        // Should be ERROR level, not WARNING (unlike missing products)
+        logRecords.Should().ContainSingle(r => r.Level == LogLevel.Error);
+        logRecords.Should().NotContain(r => r.Level == LogLevel.Warning);
+    }
+
+    [Fact]
+    public void EnrichTrades_WithInvalidDates_ShouldIncrementDiscardedCount()
+    {
+        // Arrange
+        var trades = new[]
+        {
+            new TradeInputDto { Date = "invalid1", ProductId = "1", Currency = "USD", Price = "10.00" },
+            new TradeInputDto { Date = "invalid2", ProductId = "2", Currency = "EUR", Price = "20.00" }
+        };
+
+        // Act
+        var (enrichedTrades, summary) = _sut.EnrichTrades(trades);
+
+        // Assert
+        enrichedTrades.Should().BeEmpty();
+        summary.TotalRowsProcessed.Should().Be(2);
+        summary.RowsDiscardedDueToValidation.Should().Be(2);
+        summary.RowsSuccessfullyEnriched.Should().Be(0);
+    }
+
+    [Fact]
+    public void EnrichTrades_WithMixedValidAndInvalidDates_ShouldLogOnlyInvalidDates()
+    {
+        // Arrange
+        var trades = new[]
+        {
+            new TradeInputDto { Date = "20231215", ProductId = "1", Currency = "USD", Price = "10.00" }, // Valid
+            new TradeInputDto { Date = "2023-12-16", ProductId = "2", Currency = "EUR", Price = "20.00" }, // Invalid format
+            new TradeInputDto { Date = "20231332", ProductId = "3", Currency = "GBP", Price = "30.00" } // Invalid calendar
+        };
+
+        _mockProductLookupService
+            .Setup(p => p.TryGetProductName(1, out It.Ref<string?>.IsAny))
+            .Returns((int id, out string? name) =>
+            {
+                name = "Product 1";
+                return true;
+            });
+
+        // Act
+        var (enrichedTrades, summary) = _sut.EnrichTrades(trades);
+
+        // Assert
+        var enrichedList = enrichedTrades.ToList();
+        enrichedList.Should().HaveCount(1);
+        enrichedList[0].ProductName.Should().Be("Product 1");
+
+        var logRecords = _fakeLogger.Collector.GetSnapshot();
+        var errorLogs = logRecords.Where(r => r.Level == LogLevel.Error).ToList();
+        errorLogs.Should().HaveCount(2, "only invalid dates should be logged");
+
+        summary.RowsDiscardedDueToValidation.Should().Be(2);
+        summary.RowsSuccessfullyEnriched.Should().Be(1);
     }
 
     #endregion
