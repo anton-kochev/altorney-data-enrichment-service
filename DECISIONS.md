@@ -185,4 +185,34 @@ Each decision follows this format:
 
 ---
 
+### 013. Value Objects for Domain Validation
+
+**Decision**: Encapsulate validation rules in value objects (TradeDate, ProductIdentifier, Currency, Price) rather than using external validation frameworks.
+
+**Context**: Trade data requires validation of multiple fields (date format, positive product ID, non-empty currency, non-negative price). Need to decide where validation logic lives.
+
+**Alternatives Considered**:
+- FluentValidation library - powerful but adds external dependency
+- Inline validation in services - scatters validation logic
+- Data Annotations - limited to simple rules, couples domain to framework
+
+**Rationale**: Value objects are a DDD pattern that keeps validation close to the domain model. Invalid states become unrepresentable at compile time. Validation logic is reusable across the codebase and testable in isolation. Each value object is self-documenting about what constitutes valid data.
+
+---
+
+### 014. Static Factory Methods for Domain Objects
+
+**Decision**: Use static `Create()` factory methods instead of public constructors for domain value objects and entities.
+
+**Context**: Need a consistent pattern for creating domain objects that ensures validation always runs.
+
+**Alternatives Considered**:
+- Public constructors with validation in body - allows `new` keyword but less explicit
+- Builder pattern - more verbose, better for objects with many optional parameters
+- Private constructors only - requires factory classes
+
+**Rationale**: Static factory methods make object creation explicit and self-documenting. They ensure validation cannot be bypassed, allow descriptive method names (e.g., `Create`, `FromString`), and enable future evolution to return Result types for error handling without breaking changes. The pattern is lightweight compared to builders while providing the same guarantees as constructor validation.
+
+---
+
 <!-- Add new decisions above this line -->
