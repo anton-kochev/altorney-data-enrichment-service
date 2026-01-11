@@ -961,7 +961,10 @@ public class TradeEnrichmentServiceTests : IDisposable
 
         for (int i = 1; i <= 4; i++)
         {
-            warningLogs.Should().ContainSingle(r => r.Message.Contains(i.ToString()),
+            var productIdToCheck = i.ToString();
+            warningLogs.Should().ContainSingle(r =>
+                    r.StructuredState != null &&
+                    r.StructuredState.Any(s => s.Key == "ProductId" && (s.Value != null && s.Value.ToString() == productIdToCheck)),
                 $"product ID {i} should be logged exactly once");
         }
     }
@@ -1027,6 +1030,379 @@ public class TradeEnrichmentServiceTests : IDisposable
             list[1].Currency.Should().Be("JPY");
             list[1].Price.Should().Be("444.44");
         }
+    }
+
+    #endregion
+
+    #region Missing Required Fields Tests (US-006)
+
+    [Theory]
+    [InlineData("", "123", "USD", "10.00", "date")]
+    [InlineData("20231215", "", "USD", "10.00", "productId")]
+    [InlineData("20231215", "123", "", "10.00", "currency")]
+    [InlineData("20231215", "123", "USD", "", "price")]
+    public void EnrichTrade_WithSingleMissingField_ShouldReturnNullAndLogError(
+        string date, string productId, string currency, string price, string expectedMissingField)
+    {
+        // Arrange
+        var tradeInput = new TradeInputDto
+        {
+            Date = date,
+            ProductId = productId,
+            Currency = currency,
+            Price = price
+        };
+
+        // Act
+        var result = _sut.EnrichTrade(tradeInput);
+
+        // Assert
+        result.Should().BeNull("trades with missing required fields should be discarded");
+
+        var logRecords = _fakeLogger.Collector.GetSnapshot();
+        var errorLog = logRecords.Should().ContainSingle(r => r.Level == LogLevel.Error).Which;
+
+        // Verify structured logging properties (more robust than string matching)
+        errorLog.StructuredState.Should().NotBeNull();
+        var state = errorLog.StructuredState!.ToDictionary(x => x.Key, x => x.Value);
+
+        state.Should().ContainKey("MissingFields").WhoseValue.Should().Contain(expectedMissingField);
+        state.Should().ContainKey("RawDate").WhoseValue.Should().Be(date);
+        state.Should().ContainKey("RawProductId").WhoseValue.Should().Be(productId);
+        state.Should().ContainKey("RawCurrency").WhoseValue.Should().Be(currency);
+        state.Should().ContainKey("RawPrice").WhoseValue.Should().Be(price);
+    }
+
+    [Fact]
+    public void EnrichTrade_WithMultipleMissingFields_ShouldReturnNullAndLogAllMissingFields()
+    {
+        // Arrange
+        var tradeInput = new TradeInputDto
+        {
+            Date = "",
+            ProductId = "",
+            Currency = "USD",
+            Price = ""
+        };
+
+        // Act
+        var result = _sut.EnrichTrade(tradeInput);
+
+        // Assert
+        result.Should().BeNull("trades with missing required fields should be discarded");
+
+        var logRecords = _fakeLogger.Collector.GetSnapshot();
+        var errorLog = logRecords.Should().ContainSingle(r => r.Level == LogLevel.Error).Which;
+
+        // Verify structured logging properties
+        errorLog.StructuredState.Should().NotBeNull();
+        var state = errorLog.StructuredState!.ToDictionary(x => x.Key, x => x.Value);
+
+        var missingFields = state.Should().ContainKey("MissingFields").WhoseValue?.ToString();
+        missingFields.Should().Contain("date");
+        missingFields.Should().Contain("productId");
+        missingFields.Should().Contain("price");
+        missingFields.Should().NotContain("currency", "Currency was provided");
+    }
+
+    [Theory]
+    [InlineData("   ", "123", "USD", "10.00", "date")]
+    [InlineData("20231215", "   ", "USD", "10.00", "productId")]
+    [InlineData("20231215", "123", "   ", "10.00", "currency")]
+    [InlineData("20231215", "123", "USD", "   ", "price")]
+    public void EnrichTrade_WithWhitespaceOnlyField_ShouldTreatAsMissingAndLogError(
+        string date, string productId, string currency, string price, string expectedMissingField)
+    {
+        // Arrange
+        var tradeInput = new TradeInputDto
+        {
+            Date = date,
+            ProductId = productId,
+            Currency = currency,
+            Price = price
+        };
+
+        // Act
+        var result = _sut.EnrichTrade(tradeInput);
+
+        // Assert
+        result.Should().BeNull("whitespace-only fields should be treated as missing");
+
+        var logRecords = _fakeLogger.Collector.GetSnapshot();
+        var errorLog = logRecords.Should().ContainSingle(r => r.Level == LogLevel.Error).Which;
+
+        // Verify structured logging properties
+        errorLog.StructuredState.Should().NotBeNull();
+        var state = errorLog.StructuredState!.ToDictionary(x => x.Key, x => x.Value);
+
+        state.Should().ContainKey("MissingFields").WhoseValue.Should().Contain(expectedMissingField);
+    }
+
+    [Theory]
+    [InlineData("\t", "123", "USD", "10.00", "date")]
+    [InlineData("20231215", "\t", "USD", "10.00", "productId")]
+    [InlineData("20231215", "123", "\t", "10.00", "currency")]
+    [InlineData("20231215", "123", "USD", "\t", "price")]
+    public void EnrichTrade_WithTabOnlyField_ShouldTreatAsMissingAndLogError(
+        string date, string productId, string currency, string price, string expectedMissingField)
+    {
+        // Arrange
+        var tradeInput = new TradeInputDto
+        {
+            Date = date,
+            ProductId = productId,
+            Currency = currency,
+            Price = price
+        };
+
+        // Act
+        var result = _sut.EnrichTrade(tradeInput);
+
+        // Assert
+        result.Should().BeNull("tab-only fields should be treated as missing");
+
+        var logRecords = _fakeLogger.Collector.GetSnapshot();
+        var errorLog = logRecords.Should().ContainSingle(r => r.Level == LogLevel.Error).Which;
+
+        // Verify structured logging properties
+        errorLog.StructuredState.Should().NotBeNull();
+        var state = errorLog.StructuredState!.ToDictionary(x => x.Key, x => x.Value);
+
+        state.Should().ContainKey("MissingFields").WhoseValue.Should().Contain(expectedMissingField);
+    }
+
+    [Theory]
+    [InlineData("\n", "123", "USD", "10.00", "date")]
+    [InlineData("20231215", "\n", "USD", "10.00", "productId")]
+    [InlineData("20231215", "123", "\n", "10.00", "currency")]
+    [InlineData("20231215", "123", "USD", "\n", "price")]
+    public void EnrichTrade_WithNewlineOnlyField_ShouldTreatAsMissingAndLogError(
+        string date, string productId, string currency, string price, string expectedMissingField)
+    {
+        // Arrange
+        var tradeInput = new TradeInputDto
+        {
+            Date = date,
+            ProductId = productId,
+            Currency = currency,
+            Price = price
+        };
+
+        // Act
+        var result = _sut.EnrichTrade(tradeInput);
+
+        // Assert
+        result.Should().BeNull("newline-only fields should be treated as missing");
+
+        var logRecords = _fakeLogger.Collector.GetSnapshot();
+        var errorLog = logRecords.Should().ContainSingle(r => r.Level == LogLevel.Error).Which;
+
+        // Verify structured logging properties
+        errorLog.StructuredState.Should().NotBeNull();
+        var state = errorLog.StructuredState!.ToDictionary(x => x.Key, x => x.Value);
+
+        state.Should().ContainKey("MissingFields").WhoseValue.Should().Contain(expectedMissingField);
+    }
+
+    [Fact]
+    public void EnrichTrade_WithMissingFields_ShouldLogErrorNotWarning()
+    {
+        // Arrange
+        var tradeInput = new TradeInputDto
+        {
+            Date = "",
+            ProductId = "123",
+            Currency = "USD",
+            Price = "10.00"
+        };
+
+        // Act
+        var result = _sut.EnrichTrade(tradeInput);
+
+        // Assert
+        result.Should().BeNull();
+
+        var logRecords = _fakeLogger.Collector.GetSnapshot();
+
+        // Should log at Error level, not Warning
+        logRecords.Should().ContainSingle(r => r.Level == LogLevel.Error,
+            "missing required fields should be logged as errors");
+    }
+
+    [Fact]
+    public void EnrichTrade_WithMissingFields_ShouldIncludeAllRawInputValuesInLog()
+    {
+        // Arrange
+        var tradeInput = new TradeInputDto
+        {
+            Date = "invalid-date",
+            ProductId = "",
+            Currency = "EUR",
+            Price = "99.99"
+        };
+
+        // Act
+        var result = _sut.EnrichTrade(tradeInput);
+
+        // Assert
+        result.Should().BeNull();
+
+        var logRecords = _fakeLogger.Collector.GetSnapshot();
+        var errorLog = logRecords.Should().ContainSingle(r => r.Level == LogLevel.Error).Which;
+
+        // Verify all raw input values are included in structured state
+        errorLog.StructuredState.Should().NotBeNull();
+        var state = errorLog.StructuredState!.ToDictionary(x => x.Key, x => x.Value);
+
+        state.Should().ContainKey("RawDate").WhoseValue.Should().Be("invalid-date");
+        state.Should().ContainKey("RawProductId").WhoseValue.Should().Be("");
+        state.Should().ContainKey("RawCurrency").WhoseValue.Should().Be("EUR");
+        state.Should().ContainKey("RawPrice").WhoseValue.Should().Be("99.99");
+    }
+
+    [Fact]
+    public void EnrichTrades_WithMixOfValidAndMissingFieldRecords_ShouldDiscardInvalidOnes()
+    {
+        // Arrange
+        var trades = new[]
+        {
+            new TradeInputDto { Date = "20231215", ProductId = "1", Currency = "USD", Price = "10.00" }, // Valid
+            new TradeInputDto { Date = "", ProductId = "2", Currency = "EUR", Price = "20.00" }, // Missing Date
+            new TradeInputDto { Date = "20231217", ProductId = "3", Currency = "GBP", Price = "30.00" }, // Valid
+            new TradeInputDto { Date = "20231218", ProductId = "", Currency = "USD", Price = "40.00" }, // Missing ProductId
+            new TradeInputDto { Date = "20231219", ProductId = "5", Currency = "", Price = "50.00" }, // Missing Currency
+            new TradeInputDto { Date = "20231220", ProductId = "6", Currency = "JPY", Price = "" } // Missing Price
+        };
+
+        _mockProductLookupService
+            .Setup(p => p.TryGetProductName(It.IsAny<int>(), out It.Ref<string?>.IsAny))
+            .Returns((int id, out string? name) =>
+            {
+                name = $"Product {id}";
+                return true;
+            });
+
+        // Act
+        var (enrichedTrades, summary) = _sut.EnrichTrades(trades);
+
+        // Assert
+        var enrichedList = enrichedTrades.ToList();
+        enrichedList.Should().HaveCount(2, "only 2 trades have all required fields");
+        enrichedList[0].ProductName.Should().Be("Product 1");
+        enrichedList[1].ProductName.Should().Be("Product 3");
+    }
+
+    [Fact]
+    public void EnrichTrades_WithMissingFieldRecords_ShouldIncrementRowsDiscardedCounter()
+    {
+        // Arrange
+        var trades = new[]
+        {
+            new TradeInputDto { Date = "20231215", ProductId = "1", Currency = "USD", Price = "10.00" }, // Valid
+            new TradeInputDto { Date = "", ProductId = "2", Currency = "EUR", Price = "20.00" }, // Missing Date
+            new TradeInputDto { Date = "20231217", ProductId = "", Currency = "GBP", Price = "30.00" }, // Missing ProductId
+            new TradeInputDto { Date = "20231218", ProductId = "4", Currency = "", Price = "40.00" } // Missing Currency
+        };
+
+        _mockProductLookupService
+            .Setup(p => p.TryGetProductName(It.IsAny<int>(), out It.Ref<string?>.IsAny))
+            .Returns((int id, out string? name) =>
+            {
+                name = $"Product {id}";
+                return true;
+            });
+
+        // Act
+        var (_, summary) = _sut.EnrichTrades(trades);
+
+        // Assert
+        summary.TotalRowsProcessed.Should().Be(4);
+        summary.RowsSuccessfullyEnriched.Should().Be(1);
+        summary.RowsDiscardedDueToValidation.Should().Be(3,
+            "three trades had missing required fields and should be discarded");
+    }
+
+    [Fact]
+    public void EnrichTrades_WithOnlyMissingFieldRecords_ShouldReturnEmptyEnrichedList()
+    {
+        // Arrange
+        var trades = new[]
+        {
+            new TradeInputDto { Date = "", ProductId = "1", Currency = "USD", Price = "10.00" },
+            new TradeInputDto { Date = "20231215", ProductId = "", Currency = "EUR", Price = "20.00" },
+            new TradeInputDto { Date = "20231216", ProductId = "2", Currency = "", Price = "30.00" },
+            new TradeInputDto { Date = "20231217", ProductId = "3", Currency = "GBP", Price = "" }
+        };
+
+        // Act
+        var (enrichedTrades, summary) = _sut.EnrichTrades(trades);
+
+        // Assert
+        enrichedTrades.Should().BeEmpty("all trades had missing required fields");
+        summary.TotalRowsProcessed.Should().Be(4);
+        summary.RowsSuccessfullyEnriched.Should().Be(0);
+        summary.RowsDiscardedDueToValidation.Should().Be(4);
+    }
+
+    [Fact]
+    public void EnrichTrade_WithAllFieldsMissing_ShouldLogAllFieldsInMissingFieldsList()
+    {
+        // Arrange
+        var tradeInput = new TradeInputDto
+        {
+            Date = "",
+            ProductId = "",
+            Currency = "",
+            Price = ""
+        };
+
+        // Act
+        var result = _sut.EnrichTrade(tradeInput);
+
+        // Assert
+        result.Should().BeNull();
+
+        var logRecords = _fakeLogger.Collector.GetSnapshot();
+        var errorLog = logRecords.Should().ContainSingle(r => r.Level == LogLevel.Error).Which;
+
+        // Verify all fields are listed as missing
+        errorLog.StructuredState.Should().NotBeNull();
+        var state = errorLog.StructuredState!.ToDictionary(x => x.Key, x => x.Value);
+
+        var missingFields = state.Should().ContainKey("MissingFields").WhoseValue?.ToString();
+        missingFields.Should().Contain("date");
+        missingFields.Should().Contain("productId");
+        missingFields.Should().Contain("currency");
+        missingFields.Should().Contain("price");
+    }
+
+    [Fact]
+    public void EnrichTrade_WithMissingFieldsBeforeInvalidFormat_ShouldLogMissingFieldsNotFormatError()
+    {
+        // Arrange - Price would be invalid format if we got that far
+        var tradeInput = new TradeInputDto
+        {
+            Date = "",  // Missing field - should be caught first
+            ProductId = "123",
+            Currency = "USD",
+            Price = "not-a-number"  // Would fail format validation
+        };
+
+        // Act
+        var result = _sut.EnrichTrade(tradeInput);
+
+        // Assert
+        result.Should().BeNull();
+
+        var logRecords = _fakeLogger.Collector.GetSnapshot();
+        var errorLog = logRecords.Should().ContainSingle(r => r.Level == LogLevel.Error,
+            "should log missing field error, not format error").Which;
+
+        // Verify it's logging missing Date, not price format error
+        errorLog.StructuredState.Should().NotBeNull();
+        var state = errorLog.StructuredState!.ToDictionary(x => x.Key, x => x.Value);
+
+        state.Should().ContainKey("MissingFields").WhoseValue.Should().Contain("date");
     }
 
     #endregion

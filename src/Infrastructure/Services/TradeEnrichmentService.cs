@@ -132,6 +132,19 @@ public sealed partial class TradeEnrichmentService : ITradeEnrichmentService
         return (enrichedTrades, summary);
     }
 
+    /// <summary>
+    /// Collects names of missing or empty required fields.
+    /// </summary>
+    private static List<string> CollectMissingFields(TradeInputDto input)
+    {
+        var missing = new List<string>(4);
+        if (string.IsNullOrWhiteSpace(input.Date)) missing.Add("date");
+        if (string.IsNullOrWhiteSpace(input.ProductId)) missing.Add("productId");
+        if (string.IsNullOrWhiteSpace(input.Currency)) missing.Add("currency");
+        if (string.IsNullOrWhiteSpace(input.Price)) missing.Add("price");
+        return missing;
+    }
+
     private bool TryValidateAndParse(
         TradeInputDto input,
         out string dateStr,
@@ -143,6 +156,19 @@ public sealed partial class TradeEnrichmentService : ITradeEnrichmentService
         productId = 0;
         currency = string.Empty;
         price = string.Empty;
+
+        // Step 1: Guard clause for required fields (US-006)
+        var missingFields = CollectMissingFields(input);
+        if (missingFields.Count > 0)
+        {
+            LogMissingFields(
+                string.Join(", ", missingFields),
+                input.Date,
+                input.ProductId,
+                input.Currency,
+                input.Price);
+            return false;
+        }
 
         try
         {
@@ -206,4 +232,15 @@ public sealed partial class TradeEnrichmentService : ITradeEnrichmentService
         Level = LogLevel.Warning,
         Message = "Product ID {ProductId} not found in product reference data. Trade: Date={Date}, Currency={Currency}, Price={Price}. Using placeholder.")]
     private partial void LogMissingProduct(int productId, string date, string currency, string price);
+
+    [LoggerMessage(
+        EventId = 2,
+        Level = LogLevel.Error,
+        Message = "Trade record discarded due to missing required fields: [{MissingFields}]. Raw input: Date='{RawDate}', ProductId='{RawProductId}', Currency='{RawCurrency}', Price='{RawPrice}'")]
+    private partial void LogMissingFields(
+        string missingFields,
+        string rawDate,
+        string rawProductId,
+        string rawCurrency,
+        string rawPrice);
 }
