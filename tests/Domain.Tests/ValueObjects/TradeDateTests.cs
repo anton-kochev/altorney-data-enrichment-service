@@ -13,6 +13,9 @@ public class TradeDateTests
     [InlineData("20200101", 2020, 1, 1)]
     [InlineData("19900228", 1990, 2, 28)]
     [InlineData("20240229", 2024, 2, 29)] // Leap year
+    [InlineData(" 20250605", 2025, 6, 5)] // Leading whitespace - trimmed
+    [InlineData("20250605 ", 2025, 6, 5)] // Trailing whitespace - trimmed
+    [InlineData(" 20250605 ", 2025, 6, 5)] // Both - trimmed
     public void Create_WithValidDate_ShouldSucceed(string input, int expectedYear, int expectedMonth, int expectedDay)
     {
         // Act
@@ -35,8 +38,6 @@ public class TradeDateTests
     [InlineData("250605")] // YY/MM/DD format (2 digit year)
     [InlineData("05062025")] // DD/MM/YYYY format
     [InlineData("2025/06/05")] // Slashes
-    [InlineData("20250605 ")] // Trailing space
-    [InlineData(" 20250605")] // Leading space
     [InlineData("202506")] // Too short (missing day)
     [InlineData("2025060")] // Too short by one digit
     [InlineData("202506055")] // Too long by one digit
@@ -86,7 +87,7 @@ public class TradeDateTests
 
         // Assert
         act.Should().Throw<ArgumentException>()
-            .WithMessage("*cannot be null or empty*");
+            .WithMessage("*cannot be empty or contain only whitespace*");
     }
 
     [Fact]
@@ -108,7 +109,7 @@ public class TradeDateTests
 
         // Assert
         act.Should().Throw<ArgumentException>()
-            .WithMessage("*cannot be null or empty*");
+            .WithMessage("*cannot be empty or contain only whitespace*");
     }
 
     #endregion
