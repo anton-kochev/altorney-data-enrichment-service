@@ -9,4 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Initial project structure with Clean Architecture (Api, Infrastructure, Application, Domain)
+- Initial project structure for Trade Data Enrichment Service
+- Product reference data loading at startup from configurable CSV file
+  - Enables mapping of product IDs to product names for trade enrichment
+  - Invalid rows are skipped and logged without blocking the service
+  - Service fails fast if product file is missing or unreadable
