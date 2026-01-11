@@ -26,6 +26,9 @@ public static class DependencyInjection
 
         services.AddHostedService<ProductDataLoader>();
 
+        // Trade enrichment service - scoped to get fresh logging state per request
+        services.AddScoped<ITradeEnrichmentService, TradeEnrichmentService>();
+
         return services;
     }
 }
