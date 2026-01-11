@@ -163,15 +163,16 @@ public sealed partial class TradeEnrichmentService : ITradeEnrichmentService
             var currencyValue = Currency.Create(input.Currency);
             currency = currencyValue.Value;
 
-            // Validate and parse price
-            if (!decimal.TryParse(input.Price, NumberStyles.Number, CultureInfo.InvariantCulture, out var priceDecimal))
+            // Validate and parse price (trim first to reduce allocations)
+            var trimmedPrice = input.Price.Trim();
+            if (!decimal.TryParse(trimmedPrice, NumberStyles.Number, CultureInfo.InvariantCulture, out var priceDecimal))
             {
                 return false;
             }
 
             // Validate price is non-negative using Price value object
             _ = Price.Create(priceDecimal);
-            price = input.Price;
+            price = trimmedPrice;
 
             return true;
         }

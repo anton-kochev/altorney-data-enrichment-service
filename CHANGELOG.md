@@ -23,3 +23,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Warning logs now include trade context (date, currency, price) for easier troubleshooting
   - Duplicate warnings aggregated (each missing productId logged only once)
   - Missing product count included in enrichment summary for reporting
+- Field preservation with automatic whitespace trimming (US-004)
+  - Date, currency, and price fields are preserved through enrichment
+  - Leading/trailing whitespace is automatically trimmed from all fields
+  - Original field values (after trimming) are maintained in output

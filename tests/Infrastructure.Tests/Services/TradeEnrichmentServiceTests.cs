@@ -675,6 +675,204 @@ public class TradeEnrichmentServiceTests : IDisposable
 
     #endregion
 
+    #region Field Preservation Tests (US-004)
+
+    [Theory]
+    [InlineData("100", "100")]
+    [InlineData("100.0", "100.0")]
+    [InlineData("100.00", "100.00")]
+    [InlineData("99.99", "99.99")]
+    [InlineData("0.50", "0.50")]
+    public void EnrichTrade_ShouldPreservePriceStringFormat(string inputPrice, string expectedPrice)
+    {
+        // Arrange
+        var tradeInput = new TradeInputDto
+        {
+            Date = "20231215",
+            ProductId = "123",
+            Currency = "USD",
+            Price = inputPrice
+        };
+
+        _mockProductLookupService
+            .Setup(p => p.TryGetProductName(123, out It.Ref<string?>.IsAny))
+            .Returns((int id, out string? name) =>
+            {
+                name = "Test Product";
+                return true;
+            });
+
+        // Act
+        var result = _sut.EnrichTrade(tradeInput);
+
+        // Assert
+        result.Should().NotBeNull();
+        result!.Price.Should().Be(expectedPrice);
+    }
+
+    [Theory]
+    [InlineData("USD", "USD")]
+    [InlineData(" USD ", "USD")]
+    [InlineData("  EUR  ", "EUR")]
+    public void EnrichTrade_ShouldTrimCurrencyWhitespace(string inputCurrency, string expectedCurrency)
+    {
+        // Arrange
+        var tradeInput = new TradeInputDto
+        {
+            Date = "20231215",
+            ProductId = "123",
+            Currency = inputCurrency,
+            Price = "100.00"
+        };
+
+        _mockProductLookupService
+            .Setup(p => p.TryGetProductName(123, out It.Ref<string?>.IsAny))
+            .Returns((int id, out string? name) =>
+            {
+                name = "Test Product";
+                return true;
+            });
+
+        // Act
+        var result = _sut.EnrichTrade(tradeInput);
+
+        // Assert
+        result.Should().NotBeNull();
+        result!.Currency.Should().Be(expectedCurrency);
+    }
+
+    [Theory]
+    [InlineData(" 20231215", "20231215")]   // Leading whitespace
+    [InlineData("20231215 ", "20231215")]   // Trailing whitespace
+    [InlineData(" 20231215 ", "20231215")]  // Both
+    [InlineData("  20240229  ", "20240229")] // Multiple spaces, leap year
+    public void EnrichTrade_ShouldTrimDateWhitespace(string inputDate, string expectedDate)
+    {
+        // Arrange
+        var tradeInput = new TradeInputDto
+        {
+            Date = inputDate,
+            ProductId = "123",
+            Currency = "USD",
+            Price = "100.00"
+        };
+
+        _mockProductLookupService
+            .Setup(p => p.TryGetProductName(123, out It.Ref<string?>.IsAny))
+            .Returns((int id, out string? name) =>
+            {
+                name = "Test Product";
+                return true;
+            });
+
+        // Act
+        var result = _sut.EnrichTrade(tradeInput);
+
+        // Assert
+        result.Should().NotBeNull();
+        result!.Date.Should().Be(expectedDate);
+    }
+
+    [Theory]
+    [InlineData(" 100.00", "100.00")]    // Leading whitespace
+    [InlineData("100.00 ", "100.00")]    // Trailing whitespace
+    [InlineData(" 100.00 ", "100.00")]   // Both
+    [InlineData("  99.99  ", "99.99")]   // Multiple spaces
+    public void EnrichTrade_ShouldTrimPriceWhitespace(string inputPrice, string expectedPrice)
+    {
+        // Arrange
+        var tradeInput = new TradeInputDto
+        {
+            Date = "20231215",
+            ProductId = "123",
+            Currency = "USD",
+            Price = inputPrice
+        };
+
+        _mockProductLookupService
+            .Setup(p => p.TryGetProductName(123, out It.Ref<string?>.IsAny))
+            .Returns((int id, out string? name) =>
+            {
+                name = "Test Product";
+                return true;
+            });
+
+        // Act
+        var result = _sut.EnrichTrade(tradeInput);
+
+        // Assert
+        result.Should().NotBeNull();
+        result!.Price.Should().Be(expectedPrice);
+    }
+
+    [Theory]
+    [InlineData("20240101")]
+    [InlineData("20240229")]  // Leap year
+    [InlineData("20001231")]  // Century boundary
+    [InlineData("19990101")]
+    public void EnrichTrade_ShouldPreserveDateFormat(string inputDate)
+    {
+        // Arrange
+        var tradeInput = new TradeInputDto
+        {
+            Date = inputDate,
+            ProductId = "123",
+            Currency = "USD",
+            Price = "100.00"
+        };
+
+        _mockProductLookupService
+            .Setup(p => p.TryGetProductName(123, out It.Ref<string?>.IsAny))
+            .Returns((int id, out string? name) =>
+            {
+                name = "Test Product";
+                return true;
+            });
+
+        // Act
+        var result = _sut.EnrichTrade(tradeInput);
+
+        // Assert
+        result.Should().NotBeNull();
+        result!.Date.Should().Be(inputDate);
+    }
+
+    [Theory]
+    [InlineData("1", "1")]
+    [InlineData("0", "0")]
+    [InlineData("0.1", "0.1")]
+    [InlineData("0.01", "0.01")]
+    [InlineData("1000000", "1000000")]
+    [InlineData("1000000.99", "1000000.99")]
+    public void EnrichTrade_ShouldPreservePriceWithVariousPrecisions(string inputPrice, string expectedPrice)
+    {
+        // Arrange
+        var tradeInput = new TradeInputDto
+        {
+            Date = "20231215",
+            ProductId = "123",
+            Currency = "USD",
+            Price = inputPrice
+        };
+
+        _mockProductLookupService
+            .Setup(p => p.TryGetProductName(123, out It.Ref<string?>.IsAny))
+            .Returns((int id, out string? name) =>
+            {
+                name = "Test Product";
+                return true;
+            });
+
+        // Act
+        var result = _sut.EnrichTrade(tradeInput);
+
+        // Assert
+        result.Should().NotBeNull();
+        result!.Price.Should().Be(expectedPrice);
+    }
+
+    #endregion
+
     #region Thread Safety Tests
 
     [Fact]
@@ -722,6 +920,112 @@ public class TradeEnrichmentServiceTests : IDisposable
             summary.RowsWithMissingProducts.Should().Be(10);
             summary.RowsDiscardedDueToValidation.Should().Be(0);
             summary.MissingProductIds.Should().HaveCount(10);
+        }
+    }
+
+    [Fact]
+    public async Task EnrichTrades_WithHighConcurrency_ShouldLogEachMissingProductOnce()
+    {
+        // Arrange - Create many trades with same missing product IDs to stress test deduplication
+        var trades = Enumerable.Range(1, 100).Select(i => new TradeInputDto
+        {
+            Date = "20231215",
+            ProductId = (i % 5).ToString(), // Only 5 unique product IDs (0-4), repeated 20 times each
+            Currency = "USD",
+            Price = "10.00"
+        }).ToArray();
+
+        _mockProductLookupService
+            .Setup(p => p.TryGetProductName(It.IsAny<int>(), out It.Ref<string?>.IsAny))
+            .Returns((int id, out string? name) =>
+            {
+                name = null;
+                return false; // All products missing
+            });
+
+        // Act - Run with higher concurrency to stress test
+        var tasks = Enumerable.Range(0, 20).Select(_ =>
+            Task.Run(() => _sut.EnrichTrades(trades))
+        ).ToArray();
+
+        await Task.WhenAll(tasks);
+
+        // Assert - Should log exactly 5 warnings (one per unique missing product: 0, 1, 2, 3, 4)
+        // even though we processed 2000 trades (20 tasks x 100 trades) with only 5 unique IDs
+        var logRecords = _fakeLogger.Collector.GetSnapshot();
+        var warningLogs = logRecords.Where(r => r.Level == LogLevel.Warning).ToList();
+
+        // Note: Product ID 0 is invalid and gets rejected during validation, so only 1-4 are logged
+        warningLogs.Should().HaveCount(4,
+            "each unique missing product ID (1-4) should be logged exactly once regardless of concurrency");
+
+        for (int i = 1; i <= 4; i++)
+        {
+            warningLogs.Should().ContainSingle(r => r.Message.Contains(i.ToString()),
+                $"product ID {i} should be logged exactly once");
+        }
+    }
+
+    [Fact]
+    public async Task EnrichTrades_WithConcurrentCalls_ShouldNotCorruptFieldValues()
+    {
+        // Arrange - Create trades with distinct values to detect any field corruption
+        var tradesSet1 = new[]
+        {
+            new TradeInputDto { Date = "20231215", ProductId = "1", Currency = "USD", Price = "111.11" },
+            new TradeInputDto { Date = "20231216", ProductId = "2", Currency = "EUR", Price = "222.22" }
+        };
+
+        var tradesSet2 = new[]
+        {
+            new TradeInputDto { Date = "20241215", ProductId = "3", Currency = "GBP", Price = "333.33" },
+            new TradeInputDto { Date = "20241216", ProductId = "4", Currency = "JPY", Price = "444.44" }
+        };
+
+        _mockProductLookupService
+            .Setup(p => p.TryGetProductName(It.IsAny<int>(), out It.Ref<string?>.IsAny))
+            .Returns((int id, out string? name) =>
+            {
+                name = $"Product {id}";
+                return true;
+            });
+
+        // Act - Run both sets concurrently multiple times
+        var tasks = new List<Task<(IEnumerable<EnrichedTradeOutputDto>, EnrichmentSummary)>>();
+        for (int i = 0; i < 50; i++)
+        {
+            tasks.Add(Task.Run(() => _sut.EnrichTrades(tradesSet1)));
+            tasks.Add(Task.Run(() => _sut.EnrichTrades(tradesSet2)));
+        }
+
+        var results = await Task.WhenAll(tasks);
+
+        // Assert - Verify no field corruption occurred
+        var set1Results = results.Where((_, idx) => idx % 2 == 0).ToList();
+        var set2Results = results.Where((_, idx) => idx % 2 == 1).ToList();
+
+        foreach (var (enrichedTrades, _) in set1Results)
+        {
+            var list = enrichedTrades.ToList();
+            list.Should().HaveCount(2);
+            list[0].Date.Should().Be("20231215");
+            list[0].Currency.Should().Be("USD");
+            list[0].Price.Should().Be("111.11");
+            list[1].Date.Should().Be("20231216");
+            list[1].Currency.Should().Be("EUR");
+            list[1].Price.Should().Be("222.22");
+        }
+
+        foreach (var (enrichedTrades, _) in set2Results)
+        {
+            var list = enrichedTrades.ToList();
+            list.Should().HaveCount(2);
+            list[0].Date.Should().Be("20241215");
+            list[0].Currency.Should().Be("GBP");
+            list[0].Price.Should().Be("333.33");
+            list[1].Date.Should().Be("20241216");
+            list[1].Currency.Should().Be("JPY");
+            list[1].Price.Should().Be("444.44");
         }
     }
 
