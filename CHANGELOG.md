@@ -35,7 +35,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     - X-Enrichment-Enriched-Rows: successfully enriched rows
     - X-Enrichment-Discarded-Rows: rows discarded due to validation
     - X-Enrichment-Missing-Products: rows with missing product mappings
-    - X-Enrichment-Missing-Product-Ids: comma-separated list of missing IDs
+    - X-Enrichment-Unique-Missing-Product-Ids: count of unique missing product IDs
   - Returns HTTP 200 for successful processing (even with some discarded rows)
   - Returns HTTP 400 for malformed CSV, empty request body, or invalid operations
   - Returns HTTP 408 for request timeout or cancellation

@@ -167,8 +167,8 @@ public class EnrichControllerTests : IDisposable
             .WhoseValue.ToString().Should().Be("3");
         _httpContext.Response.Headers.Should().ContainKey("X-Enrichment-Missing-Products")
             .WhoseValue.ToString().Should().Be("2");
-        _httpContext.Response.Headers.Should().ContainKey("X-Enrichment-Missing-Product-Ids")
-            .WhoseValue.ToString().Should().Be("888,999");
+        _httpContext.Response.Headers.Should().ContainKey("X-Enrichment-Unique-Missing-Product-Ids")
+            .WhoseValue.ToString().Should().Be("2");
     }
 
     #endregion
@@ -463,17 +463,15 @@ public class EnrichControllerTests : IDisposable
         await _sut.Enrich(inputTrades);
 
         // Assert
-        _httpContext.Response.Headers.Should().ContainKey("X-Enrichment-Missing-Product-Ids");
-        var headerValue = _httpContext.Response.Headers["X-Enrichment-Missing-Product-Ids"].ToString();
+        _httpContext.Response.Headers.Should().ContainKey("X-Enrichment-Unique-Missing-Product-Ids");
+        var headerValue = _httpContext.Response.Headers["X-Enrichment-Unique-Missing-Product-Ids"].ToString();
 
-        // Header should contain all IDs in sorted order
-        headerValue.Should().Contain("777");
-        headerValue.Should().Contain("888");
-        headerValue.Should().Contain("999");
+        // Header should contain the count of unique missing product IDs
+        headerValue.Should().Be("3");
     }
 
     [Fact]
-    public async Task Enrich_WithNoMissingProducts_ShouldHaveEmptyMissingProductIdsHeader()
+    public async Task Enrich_WithNoMissingProducts_ShouldHaveZeroUniqueMissingProductIdsHeader()
     {
         // Arrange
         var inputTrades = new[] { TestDataBuilder.CreateValidTradeInput() };
@@ -492,8 +490,8 @@ public class EnrichControllerTests : IDisposable
         await _sut.Enrich(inputTrades);
 
         // Assert
-        _httpContext.Response.Headers.Should().ContainKey("X-Enrichment-Missing-Product-Ids");
-        _httpContext.Response.Headers["X-Enrichment-Missing-Product-Ids"].ToString().Should().BeEmpty();
+        _httpContext.Response.Headers.Should().ContainKey("X-Enrichment-Unique-Missing-Product-Ids");
+        _httpContext.Response.Headers["X-Enrichment-Unique-Missing-Product-Ids"].ToString().Should().Be("0");
     }
 
     #endregion

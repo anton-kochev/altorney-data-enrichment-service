@@ -75,6 +75,30 @@ dotnet test /p:CollectCoverage=true
 dotnet test --filter "FullyQualifiedName~TradeDateTests"
 ```
 
+### Manual Testing with Large Files
+
+Use the `test-enrichment.sh` script to test the API with custom CSV files:
+
+```bash
+# Make the script executable (first time only)
+chmod +x test-enrichment.sh
+
+# Run with default test files (largeSizeProduct.csv, middleSizeTrade.csv)
+./test-enrichment.sh
+
+# Run with custom files
+./test-enrichment.sh path/to/products.csv path/to/trades.csv
+```
+
+The script will:
+1. Start the API server with the specified product file
+2. Wait for the server to be ready
+3. Send the trade file for enrichment
+4. Display results (HTTP status, duration, output statistics)
+5. Automatically stop the server when done
+
+Output is saved to `enriched-output.csv`.
+
 ## Usage
 
 ### Input Format (Trade CSV)

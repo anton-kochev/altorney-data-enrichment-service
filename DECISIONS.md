@@ -252,7 +252,7 @@ Each decision follows this format:
 - Headers are set before streaming begins, providing immediate visibility
 - Standard HTTP semantics, no custom format to document
 
-Headers used: `X-Enrichment-Total-Rows`, `X-Enrichment-Enriched-Rows`, `X-Enrichment-Discarded-Rows`, `X-Enrichment-Missing-Products`, `X-Enrichment-Missing-Product-Ids`.
+Headers used: `X-Enrichment-Total-Rows`, `X-Enrichment-Enriched-Rows`, `X-Enrichment-Discarded-Rows`, `X-Enrichment-Missing-Products`, `X-Enrichment-Unique-Missing-Product-Ids`.
 
 ---
 

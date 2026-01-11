@@ -96,7 +96,7 @@ public class EnrichmentEndpointIntegrationTests : IClassFixture<CustomWebApplica
         response.Headers.Should().ContainKey("X-Enrichment-Enriched-Rows");
         response.Headers.Should().ContainKey("X-Enrichment-Discarded-Rows");
         response.Headers.Should().ContainKey("X-Enrichment-Missing-Products");
-        response.Headers.Should().ContainKey("X-Enrichment-Missing-Product-Ids");
+        response.Headers.Should().ContainKey("X-Enrichment-Unique-Missing-Product-Ids");
     }
 
     #endregion

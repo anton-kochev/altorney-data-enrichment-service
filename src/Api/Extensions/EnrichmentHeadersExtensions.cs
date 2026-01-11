@@ -21,13 +21,6 @@ public static class EnrichmentHeadersExtensions
         response.Headers.Append("X-Enrichment-Enriched-Rows", summary.RowsSuccessfullyEnriched.ToString());
         response.Headers.Append("X-Enrichment-Discarded-Rows", summary.RowsDiscardedDueToValidation.ToString());
         response.Headers.Append("X-Enrichment-Missing-Products", summary.RowsWithMissingProducts.ToString());
-
-        // Sort missing product IDs and join with comma separator
-        // Always add the header, even if empty, for consistent response format
-        var missingProductIds = summary.MissingProductIds.Count > 0
-            ? string.Join(",", summary.MissingProductIds.OrderBy(id => id))
-            : string.Empty;
-
-        response.Headers["X-Enrichment-Missing-Product-Ids"] = missingProductIds;
+        response.Headers.Append("X-Enrichment-Unique-Missing-Product-Ids", summary.MissingProductIds.Count.ToString());
     }
 }
