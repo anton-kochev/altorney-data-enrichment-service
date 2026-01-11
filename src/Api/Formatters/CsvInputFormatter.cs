@@ -1,8 +1,10 @@
+using System.Globalization;
 using System.Text;
 using Application.DTOs;
+using CsvHelper;
+using CsvHelper.Configuration;
 using Microsoft.AspNetCore.Mvc.Formatters;
 using Microsoft.Extensions.Logging;
-using nietras.SeparatedValues;
 
 namespace Api.Formatters;
 
@@ -51,7 +53,7 @@ public sealed partial class CsvInputFormatter : TextInputFormatter
 
     /// <summary>
     /// Reads the CSV request body and parses it into a collection of TradeInputDto objects.
-    /// Uses the Sep library for high-performance CSV parsing with proper unescaping.
+    /// Uses CsvHelper for high-performance streaming CSV parsing with proper RFC 4180 compliance.
     /// </summary>
     /// <param name="context">The input formatter context.</param>
     /// <param name="encoding">The character encoding to use.</param>
@@ -60,6 +62,7 @@ public sealed partial class CsvInputFormatter : TextInputFormatter
     /// Expected input format: date,product_id,currency,price (or productId instead of product_id).
     /// Quoted fields are automatically unescaped per RFC 4180.
     /// Returns failure result for empty body, missing columns, or malformed CSV.
+    /// Streams directly from request body without buffering into memory.
     /// </remarks>
     public override async Task<InputFormatterResult> ReadRequestBodyAsync(
         InputFormatterContext context,
@@ -80,60 +83,77 @@ public sealed partial class CsvInputFormatter : TextInputFormatter
 
         try
         {
-            // Read request body into a MemoryStream for Sep library compatibility
-            // Sep requires a seekable stream for proper CSV parsing
-            using var memoryStream = new MemoryStream();
-            await request.Body.CopyToAsync(memoryStream);
+            // Stream directly from request body without buffering
+            using var reader = new StreamReader(request.Body, encoding, leaveOpen: true);
 
-            // Check for empty content
-            if (memoryStream.Length == 0)
+            // Configure CsvHelper for RFC 4180 compliance with no whitespace trimming
+            var config = new CsvConfiguration(CultureInfo.InvariantCulture)
+            {
+                HasHeaderRecord = true,
+                TrimOptions = TrimOptions.None,
+                MissingFieldFound = null,
+                ReadingExceptionOccurred = args => false
+            };
+
+            using var csv = new CsvReader(reader, config);
+
+            // Read header row
+            if (!await csv.ReadAsync())
             {
                 LogEmptyOrWhitespaceBody();
                 return await InputFormatterResult.FailureAsync();
             }
 
-            memoryStream.Position = 0;
-            using var reader = new StreamReader(memoryStream, encoding, leaveOpen: true);
+            csv.ReadHeader();
 
-            // Parse CSV using Sep library
-            var trades = new List<TradeInputDto>();
-
-            using SepReader sepReader = Sep.Reader(o => o with { Unescape = true }).From(reader);
-
-            // Check for empty CSV (no header row)
-            if (sepReader.Header.ColNames.Count == 0)
+            // Check for empty CSV (no header columns)
+            if (csv.HeaderRecord == null || csv.HeaderRecord.Length == 0)
             {
                 LogEmptyOrWhitespaceBody();
                 return await InputFormatterResult.FailureAsync();
             }
 
             // Validate required columns exist
-            if (!ValidateRequiredColumns(sepReader, context))
+            if (!ValidateRequiredColumns(csv, context))
             {
                 return await InputFormatterResult.FailureAsync();
             }
 
             // Parse each row - streaming, one row at a time
-            foreach (SepReader.Row row in sepReader)
+            var trades = new List<TradeInputDto>();
+            int rowIndex = 1; // Start at 1 for data rows (header is row 0)
+
+            while (await csv.ReadAsync())
             {
+                rowIndex++;
                 try
                 {
+                    // Validate row has the expected number of fields (strict RFC 4180 compliance)
+                    int fieldCount = csv.Parser.Count;
+                    int expectedCount = csv.HeaderRecord?.Length ?? 0;
+
+                    if (fieldCount != expectedCount)
+                    {
+                        throw new InvalidOperationException(
+                            $"Row has {fieldCount} fields but header has {expectedCount} fields");
+                    }
+
                     var trade = new TradeInputDto
                     {
-                        Date = GetColumnValue(row, sepReader, "date"),
-                        ProductId = GetColumnValue(row, sepReader, "product_id", "productId"),
-                        Currency = GetColumnValue(row, sepReader, "currency"),
-                        Price = GetColumnValue(row, sepReader, "price")
+                        Date = GetColumnValue(csv, "date"),
+                        ProductId = GetColumnValue(csv, "product_id", "productId"),
+                        Currency = GetColumnValue(csv, "currency"),
+                        Price = GetColumnValue(csv, "price")
                     };
 
                     trades.Add(trade);
                 }
                 catch (Exception ex)
                 {
-                    LogRowParsingError(row.RowIndex, ex);
+                    LogRowParsingError(rowIndex, ex);
                     context.ModelState.AddModelError(
                         string.Empty,
-                        $"Malformed CSV at row {row.RowIndex}: {ex.Message}");
+                        $"Malformed CSV at row {rowIndex}: {ex.Message}");
                     return await InputFormatterResult.FailureAsync();
                 }
             }
@@ -154,20 +174,22 @@ public sealed partial class CsvInputFormatter : TextInputFormatter
     /// <summary>
     /// Validates that all required columns exist in the CSV header.
     /// </summary>
-    /// <param name="reader">The Sep reader instance.</param>
+    /// <param name="csv">The CsvReader instance.</param>
     /// <param name="context">The input formatter context for adding errors.</param>
     /// <returns>True if all required columns exist; otherwise, false.</returns>
-    private bool ValidateRequiredColumns(SepReader reader, InputFormatterContext context)
+    private bool ValidateRequiredColumns(CsvReader csv, InputFormatterContext context)
     {
         string[] requiredColumns = ["date", "currency", "price"];
+        string[] headerColumns = csv.HeaderRecord ?? [];
+
         List<string> missingColumns =
         [
-            ..requiredColumns.Where(column => !reader.Header.ColNames.Contains(column))
+            ..requiredColumns.Where(column => !headerColumns.Contains(column))
         ];
 
         // Check for product_id or productId (both are acceptable)
-        if (!reader.Header.ColNames.Contains("product_id") &&
-            !reader.Header.ColNames.Contains("productId"))
+        if (!headerColumns.Contains("product_id") &&
+            !headerColumns.Contains("productId"))
         {
             missingColumns.Add("product_id");
         }
@@ -185,32 +207,30 @@ public sealed partial class CsvInputFormatter : TextInputFormatter
 
     /// <summary>
     /// Gets the value of a column from a CSV row, trying multiple column name variations.
-    /// Uses Span to properly handle quoted and unquoted fields.
+    /// CsvHelper automatically handles RFC 4180 field quoting and unescaping.
     /// </summary>
-    /// <param name="row">The CSV row.</param>
-    /// <param name="reader">The Sep reader containing header information.</param>
+    /// <param name="csv">The CsvReader instance.</param>
     /// <param name="primaryColumnName">The primary column name to try.</param>
     /// <param name="alternativeColumnName">An alternative column name to try if primary doesn't exist.</param>
     /// <returns>The column value as a string.</returns>
     private static string GetColumnValue(
-        SepReader.Row row,
-        SepReader reader,
+        CsvReader csv,
         string primaryColumnName,
         string? alternativeColumnName = null)
     {
+        string[] headerColumns = csv.HeaderRecord ?? [];
+
         // Try primary column name first
-        if (reader.Header.ColNames.Contains(primaryColumnName))
+        if (headerColumns.Contains(primaryColumnName))
         {
-            // Use Span.ToString() to get the properly unquoted value
-            return row[primaryColumnName].Span.ToString();
+            return csv.GetField(primaryColumnName) ?? string.Empty;
         }
 
         // Try an alternative column name if provided
         if (alternativeColumnName != null &&
-            reader.Header.ColNames.Contains(alternativeColumnName))
+            headerColumns.Contains(alternativeColumnName))
         {
-            // Use Span.ToString() to get the properly unquoted value
-            return row[alternativeColumnName].Span.ToString();
+            return csv.GetField(alternativeColumnName) ?? string.Empty;
         }
 
         // This should not happen if ValidateRequiredColumns is called first

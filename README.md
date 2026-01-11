@@ -1,5 +1,7 @@
 # Trade Data Enrichment Service
 
+[![.NET](https://github.com/anton-kochev/altorney-data-enrichment-service/actions/workflows/dotnet.yml/badge.svg)](https://github.com/anton-kochev/altorney-data-enrichment-service/actions/workflows/dotnet.yml)
+
 A .NET 10.0 ASP.NET Core API that enriches trade transaction data by mapping product IDs to human-readable product names.
 
 ## Highlights
@@ -26,6 +28,8 @@ A .NET 10.0 ASP.NET Core API that enriches trade transaction data by mapping pro
 - [Configuration](#configuration)
 - [Validation Rules](#validation-rules)
 - [Implementation Status](#implementation-status)
+- [Documentation](#documentation)
+- [CI Pipeline](#ci-pipeline)
 - [Contributing](#contributing)
 - [License](#license)
 
@@ -38,17 +42,20 @@ A .NET 10.0 ASP.NET Core API that enriches trade transaction data by mapping pro
 ### Installation
 
 1. Clone the repository
+
    ```bash
    git clone https://github.com/anton-kochev/altorney-data-enrichment-service.git
    cd altorney-data-enrichment-service
    ```
 
 2. Build the solution
+
    ```bash
    dotnet build altorney-data-enrichment-service.sln
    ```
 
 3. Run the application
+
    ```bash
    dotnet run --project src/Api/Api.csproj
    ```
@@ -154,17 +161,50 @@ Trades with valid fields but unmapped product IDs are included with "Missing Pro
 - [x] Date format validation (US-005)
 - [x] Required fields validation (US-006)
 - [x] ProductId format validation (US-007)
+- [x] CSV enrichment endpoint `POST /api/v1/enrich` (US-009)
+- [x] Streaming CSV processing with CsvHelper (US-012)
 - [x] Clean Architecture with DDD patterns
-- [x] Unit tests for Domain and Infrastructure
+- [x] Unit tests for Domain, Infrastructure, and Api
 
 ### Pending
 
-- [ ] CSV enrichment endpoint `POST /api/v1/enrich` (US-009)
 - [ ] Health check endpoint `GET /health` (US-011)
-- [ ] Streaming CSV processing for large files (US-012)
-- [ ] Integration and performance tests
+- [ ] Performance tests
 
 See [epics-and-stories.md](epics-and-stories.md) for the complete roadmap.
+
+## Documentation
+
+| Document | Description |
+|----------|-------------|
+| [CHANGELOG.md](CHANGELOG.md) | Version history following [Keep a Changelog](https://keepachangelog.com/) format |
+| [DECISIONS.md](DECISIONS.md) | Technical decision records with context and rationale |
+| [epics-and-stories.md](epics-and-stories.md) | Product roadmap with epics and user stories |
+
+### User Story Documentation
+
+Detailed implementation documentation for completed user stories:
+
+| Story | Description |
+|-------|-------------|
+| [US-001](docs/US-001.md) | Product reference data loading |
+| [US-002](docs/US-002.md) | Trade enrichment service |
+| [US-003](docs/US-003.md) | Missing product handling |
+| [US-004](docs/US-004.md) | Field preservation with whitespace trimming |
+| [US-005](docs/US-005.md) | Date format validation |
+| [US-006](docs/US-006.md) | Required fields validation |
+| [US-009](docs/US-009.md) | CSV enrichment endpoint |
+
+## CI Pipeline
+
+This project uses GitHub Actions for continuous integration.
+
+**Workflow:** [`.github/workflows/dotnet.yml`](.github/workflows/dotnet.yml)
+
+| Trigger | Action |
+|---------|--------|
+| Push to `main` | Build and test |
+| Pull request to `main` | Build and test |
 
 ## Contributing
 

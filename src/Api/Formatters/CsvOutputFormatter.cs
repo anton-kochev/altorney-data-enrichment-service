@@ -1,12 +1,14 @@
+using System.Globalization;
 using System.Text;
 using Application.DTOs;
+using CsvHelper;
+using CsvHelper.Configuration;
 using Microsoft.AspNetCore.Mvc.Formatters;
-using nietras.SeparatedValues;
 
 namespace Api.Formatters;
 
 /// <summary>
-/// Output formatter for writing EnrichedTradeOutputDto collections as CSV using the Sep library.
+/// Output formatter for writing EnrichedTradeOutputDto collections as CSV using CsvHelper.
 /// Supports text/csv media type with UTF-8 encoding.
 /// </summary>
 public sealed class CsvOutputFormatter : OutputFormatter
@@ -29,61 +31,60 @@ public sealed class CsvOutputFormatter : OutputFormatter
     {
         ArgumentNullException.ThrowIfNull(context);
 
-        var type = context.ObjectType;
+        Type? type = context.ObjectType;
 
-        if (type == null)
-        {
-            return false;
-        }
-
-        return type.IsAssignableTo(typeof(IEnumerable<EnrichedTradeOutputDto>));
+        return type != null && type.IsAssignableTo(typeof(IEnumerable<EnrichedTradeOutputDto>));
     }
 
     /// <summary>
     /// Writes the enriched trade data to the response body as CSV.
-    /// Uses the Sep library for high-performance CSV generation with proper escaping.
+    /// Uses CsvHelper for high-performance CSV generation with proper RFC 4180 escaping.
     /// </summary>
     /// <param name="context">The formatter context containing the data to write.</param>
     /// <returns>A task representing the asynchronous write operation.</returns>
     /// <remarks>
     /// Output format: date,productName,currency,price with comma separator.
     /// Special characters in field values are automatically escaped per RFC 4180.
+    /// Streams directly to response body without buffering.
     /// </remarks>
     public override async Task WriteResponseBodyAsync(OutputFormatterWriteContext context)
     {
         ArgumentNullException.ThrowIfNull(context);
 
-        var httpContext = context.HttpContext;
+        HttpContext httpContext = context.HttpContext;
         var trades = (IEnumerable<EnrichedTradeOutputDto>)context.Object!;
 
         // Set the Content-Type header
         httpContext.Response.ContentType = "text/csv";
 
         // Use the writer factory from the context to create a TextWriter
-        var encoding = Encoding.UTF8;
-        var writer = context.WriterFactory(httpContext.Response.Body, encoding);
+        Encoding encoding = Encoding.UTF8;
+        TextWriter writer = context.WriterFactory(httpContext.Response.Body, encoding);
 
-        var tradesList = trades.ToList();
-
-        // Handle empty collection - write header only
-        if (tradesList.Count == 0)
+        // Configure CsvHelper for RFC 4180 compliance with no whitespace trimming
+        var config = new CsvConfiguration(CultureInfo.InvariantCulture)
         {
-            await writer.WriteLineAsync("date,productName,currency,price");
-            await writer.FlushAsync();
-            return;
-        }
+            HasHeaderRecord = true,
+            TrimOptions = TrimOptions.None
+        };
 
-        // Use Sep library to write CSV with comma separator and escape special characters
-        using var sepWriter = Sep.New(',').Writer(options => options with { Escape = true }).To(writer);
+        await using var csv = new CsvWriter(writer, config);
+
+        // Write header row
+        csv.WriteField("date");
+        csv.WriteField("productName");
+        csv.WriteField("currency");
+        csv.WriteField("price");
+        await csv.NextRecordAsync();
 
         // Write all data rows
-        foreach (var trade in tradesList)
+        foreach (var trade in trades)
         {
-            using var row = sepWriter.NewRow();
-            row["date"].Set(trade.Date);
-            row["productName"].Set(trade.ProductName);
-            row["currency"].Set(trade.Currency);
-            row["price"].Set(trade.Price);
+            csv.WriteField(trade.Date);
+            csv.WriteField(trade.ProductName);
+            csv.WriteField(trade.Currency);
+            csv.WriteField(trade.Price);
+            await csv.NextRecordAsync();
         }
 
         await writer.FlushAsync();

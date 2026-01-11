@@ -1,8 +1,10 @@
+using System.Globalization;
 using Application.Configuration;
+using CsvHelper;
+using CsvHelper.Configuration;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using nietras.SeparatedValues;
 
 namespace Infrastructure.Services;
 
@@ -40,27 +42,43 @@ public sealed partial class ProductDataLoader : IHostedService
         Dictionary<int, string> products = new();
         int skippedCount = 0;
 
-        using SepReader reader = Sep.Reader().FromFile(_options.FilePath);
+        using var streamReader = new StreamReader(_options.FilePath);
 
-        foreach (SepReader.Row row in reader)
+        // Configure CsvHelper for RFC 4180 compliance with no whitespace trimming
+        var config = new CsvConfiguration(CultureInfo.InvariantCulture)
         {
+            HasHeaderRecord = true,
+            TrimOptions = TrimOptions.None,
+            MissingFieldFound = null
+        };
+
+        using var csv = new CsvReader(streamReader, config);
+
+        // Read header
+        await csv.ReadAsync();
+        csv.ReadHeader();
+
+        int rowIndex = 1; // Start at 1 for data rows
+        while (await csv.ReadAsync())
+        {
+            rowIndex++;
             cancellationToken.ThrowIfCancellationRequested();
 
-            ReadOnlySpan<char> productIdText = row["productId"].Span;
-            ReadOnlySpan<char> productNameText = row["productName"].Span;
+            string? productIdText = csv.GetField("productId");
+            string? productNameText = csv.GetField("productName");
 
             // Skip if productId is empty or whitespace
-            if (productIdText.IsEmpty || productIdText.IsWhiteSpace())
+            if (string.IsNullOrWhiteSpace(productIdText))
             {
-                LogSkippingRow(row.RowIndex, "Empty productId");
+                LogSkippingRow(rowIndex, "Empty productId");
                 skippedCount++;
                 continue;
             }
 
             // Skip if productName is empty or whitespace
-            if (productNameText.IsEmpty || productNameText.IsWhiteSpace())
+            if (string.IsNullOrWhiteSpace(productNameText))
             {
-                LogSkippingRow(row.RowIndex, "Empty productName");
+                LogSkippingRow(rowIndex, "Empty productName");
                 skippedCount++;
                 continue;
             }
@@ -68,7 +86,7 @@ public sealed partial class ProductDataLoader : IHostedService
             // Try to parse productId as integer
             if (!int.TryParse(productIdText, out var productId))
             {
-                LogSkippingRow(row.RowIndex, "Non-integer productId");
+                LogSkippingRow(rowIndex, "Non-integer productId");
                 skippedCount++;
                 continue;
             }
@@ -76,17 +94,17 @@ public sealed partial class ProductDataLoader : IHostedService
             // Skip if productId is zero or negative
             if (productId <= 0)
             {
-                LogSkippingRow(row.RowIndex, "ProductId must be positive");
+                LogSkippingRow(rowIndex, "ProductId must be positive");
                 skippedCount++;
                 continue;
             }
 
-            string productName = productNameText.ToString().Trim();
+            string productName = productNameText.Trim();
 
             // Skip duplicates (keep the first occurrence)
             if (!products.TryAdd(productId, productName))
             {
-                LogDuplicateProductId(productId, row.RowIndex);
+                LogDuplicateProductId(productId, rowIndex);
                 skippedCount++;
             }
         }

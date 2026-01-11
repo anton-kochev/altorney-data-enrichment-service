@@ -37,7 +37,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     - X-Enrichment-Missing-Products: rows with missing product mappings
     - X-Enrichment-Missing-Product-Ids: comma-separated list of missing IDs
   - Returns HTTP 200 for successful processing (even with some discarded rows)
-  - Returns HTTP 400 for malformed CSV or empty request body
+  - Returns HTTP 400 for malformed CSV, empty request body, or invalid operations
+  - Returns HTTP 408 for request timeout or cancellation
   - Returns HTTP 415 for unsupported content types
-  - Configurable request size limit (default: 100MB) via appsettings.json
-  - Custom CSV formatters using Sep library for high-performance parsing
+  - Configurable request size limit (default: 100MB)
+  - Configurable request timeout (default: 5 minutes)
+  - Custom CSV formatters using CsvHelper library for streaming CSV processing

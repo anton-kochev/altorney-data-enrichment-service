@@ -5,6 +5,7 @@ This document records significant technical decisions made during the developmen
 ## Format
 
 Each decision follows this format:
+
 - **Decision**: What was decided
 - **Context**: Why this decision was needed
 - **Alternatives Considered**: Other options that were evaluated
@@ -21,6 +22,7 @@ Each decision follows this format:
 **Context**: Need a maintainable, testable architecture that separates concerns and allows independent evolution of components.
 
 **Alternatives Considered**:
+
 - Monolithic single-project structure
 - Traditional N-tier architecture
 
@@ -35,6 +37,7 @@ Each decision follows this format:
 **Context**: Needed to decide whether to use Infrastructure as the Web API host or create a separate project.
 
 **Alternatives Considered**:
+
 - Use Infrastructure project as the Web API host
 
 **Rationale**: Separation provides clearer boundaries - Api handles HTTP concerns (controllers, middleware, DI configuration) while Infrastructure handles external integrations (database, file I/O). This also allows for potential alternative entry points in the future.
@@ -48,6 +51,7 @@ Each decision follows this format:
 **Context**: Need to choose between controller-based and minimal API approaches for the REST endpoints.
 
 **Alternatives Considered**:
+
 - Minimal APIs
 
 **Rationale**: Controller-based approach provides better organization for validation, error handling, and follows familiar MVC patterns. While we only have 2 endpoints initially, controllers scale better if the API grows.
@@ -61,6 +65,7 @@ Each decision follows this format:
 **Context**: Need to define how data access will be handled across the application.
 
 **Alternatives Considered**:
+
 - Repository Pattern with IProductRepository interface
 
 **Rationale**: EF Core already provides a unit of work and repository-like abstraction (DbContext, DbSet). Adding another repository layer introduces unnecessary abstraction without significant benefit for this project's scope.
@@ -74,6 +79,7 @@ Each decision follows this format:
 **Context**: Need a consistent format for tracking project changes across versions.
 
 **Alternatives Considered**:
+
 - Conventional Commits only
 - Auto-generated changelog from commits
 
@@ -88,6 +94,7 @@ Each decision follows this format:
 **Context**: Need consistent code formatting across different editors and team members.
 
 **Alternatives Considered**:
+
 - IDE-specific settings only
 - StyleCop/Roslyn analyzers only
 
@@ -102,10 +109,12 @@ Each decision follows this format:
 **Context**: Need to ensure consistent SDK versions, project settings, and line endings across environments.
 
 **Alternatives Considered**:
+
 - Individual project settings only
 - CI/CD enforcement only
 
 **Rationale**:
+
 - global.json pins SDK version preventing "works on my machine" issues
 - Directory.Build.props eliminates duplication and ensures all projects use same settings
 - .gitattributes ensures consistent line endings across Windows/Mac/Linux
@@ -119,6 +128,7 @@ Each decision follows this format:
 **Context**: Need a consistent commit message format that enables automated changelog generation and semantic versioning.
 
 **Alternatives Considered**:
+
 - Freeform commit messages
 - Custom commit format
 
@@ -133,6 +143,7 @@ Each decision follows this format:
 **Context**: Product data is loaded once at startup and accessed concurrently by multiple request threads. Need an efficient, thread-safe data structure for O(1) lookups.
 
 **Alternatives Considered**:
+
 - `ConcurrentDictionary<int, string>` - thread-safe but optimized for concurrent writes
 - `ImmutableDictionary<int, string>` - immutable but slower lookups
 - `Dictionary<int, string>` with locks - manual synchronization overhead
@@ -141,18 +152,19 @@ Each decision follows this format:
 
 ---
 
-### 010. Sep Library for CSV Parsing
+### 010. CsvHelper Library for CSV Parsing
 
-**Decision**: Use [Sep](https://github.com/nietras/Sep) (nietras.Sep) for CSV parsing instead of CsvHelper.
+**Decision**: Use [CsvHelper](https://joshclose.github.io/CsvHelper/) for CSV parsing.
 
-**Context**: Need high-performance CSV parsing for loading product reference data at startup and processing trade files.
+**Context**: Need CSV parsing for loading product reference data at startup and processing trade files. Must support streaming from non-seekable HTTP request bodies.
 
 **Alternatives Considered**:
-- CsvHelper - most popular, feature-rich but slower
+
+- Sep (nietras.Sep) - fastest .NET CSV parser, but requires seekable streams
 - Sylvan.Data.Csv - good performance, more complex API
 - Manual parsing with `string.Split` - error-prone, no RFC 4180 compliance
 
-**Rationale**: Sep is the fastest .NET CSV parser with zero-allocation design. Benchmarks show 2-5x better performance than CsvHelper. The API is simple (`row["columnName"].Span`) and it handles RFC 4180 edge cases correctly. Ideal for high-throughput trade processing requirements.
+**Rationale**: CsvHelper is the most popular .NET CSV library with excellent RFC 4180 compliance. Critically, it supports forward-only streams, enabling true streaming directly from `request.Body` without buffering the entire request into memory. While Sep offers better raw performance, CsvHelper's streaming capability reduces memory usage from ~100MB (full buffer) to minimal row-by-row processing for large CSV uploads. The API is well-documented and handles edge cases (quoting, escaping, multiline fields) correctly.
 
 ---
 
@@ -163,6 +175,7 @@ Each decision follows this format:
 **Context**: Need a development approach that ensures high test coverage and drives clean, testable design.
 
 **Alternatives Considered**:
+
 - Test-after development - write tests after implementation
 - Behavior-Driven Development (BDD) - higher-level specification tests
 
@@ -177,6 +190,7 @@ Each decision follows this format:
 **Context**: Need efficient, structured logging throughout the application with minimal runtime overhead.
 
 **Alternatives Considered**:
+
 - Traditional `ILogger.LogInformation()` extension methods - allocates strings and objects
 - Serilog with message templates - third-party dependency
 - Manual `ILogger.Log()` calls - verbose and error-prone
@@ -192,6 +206,7 @@ Each decision follows this format:
 **Context**: Trade data requires validation of multiple fields (date format, positive product ID, non-empty currency, non-negative price). Need to decide where validation logic lives.
 
 **Alternatives Considered**:
+
 - FluentValidation library - powerful but adds external dependency
 - Inline validation in services - scatters validation logic
 - Data Annotations - limited to simple rules, couples domain to framework
@@ -207,6 +222,7 @@ Each decision follows this format:
 **Context**: Need a consistent pattern for creating domain objects that ensures validation always runs.
 
 **Alternatives Considered**:
+
 - Public constructors with validation in body - allows `new` keyword but less explicit
 - Builder pattern - more verbose, better for objects with many optional parameters
 - Private constructors only - requires factory classes
@@ -222,12 +238,14 @@ Each decision follows this format:
 **Context**: The CSV enrichment endpoint needs to provide processing statistics (total rows, enriched rows, discarded rows, missing products) alongside the enriched CSV data. Need to decide how to deliver this metadata.
 
 **Alternatives Considered**:
+
 - JSON wrapper object containing both CSV data and summary - breaks streaming, changes Content-Type
 - Multipart response with summary and CSV parts - complex client parsing
 - Trailing summary row in CSV output - breaks standard CSV format
 - Separate endpoint to query processing results - requires correlation, adds complexity
 
 **Rationale**: HTTP response headers are the idiomatic way to provide metadata about a response. Benefits include:
+
 - Maintains pure CSV response body with `text/csv` Content-Type
 - Preserves streaming capability (no need to buffer entire response)
 - Machine-readable and easy to parse from any HTTP client
@@ -235,6 +253,53 @@ Each decision follows this format:
 - Standard HTTP semantics, no custom format to document
 
 Headers used: `X-Enrichment-Total-Rows`, `X-Enrichment-Enriched-Rows`, `X-Enrichment-Discarded-Rows`, `X-Enrichment-Missing-Products`, `X-Enrichment-Missing-Product-Ids`.
+
+---
+
+### 016. Request Timeout Policy for Enrichment Endpoint
+
+**Decision**: Use ASP.NET Core's `RequestTimeouts` middleware with a named policy (`EnrichmentPolicy`) and the `[RequestTimeout]` attribute.
+
+**Context**: Large CSV files (up to 100MB) may take significant time to process. Need to prevent runaway requests while allowing sufficient time for legitimate large file processing.
+
+**Alternatives Considered**:
+
+- `CancellationToken` with manual timeout - requires custom implementation
+- Kestrel's `RequestHeadersTimeout` - applies globally, not per-endpoint
+- Custom middleware with `Task.Delay` - more complex, error-prone
+
+**Rationale**: ASP.NET Core's built-in `RequestTimeouts` middleware (introduced in .NET 7) provides:
+
+- Per-endpoint timeout configuration via named policies
+- Automatic `CancellationToken` propagation
+- Clean HTTP 408 response on timeout
+- Configurable timeout response handler
+- Integration with the `[RequestTimeout("PolicyName")]` attribute
+
+Configuration via `EnrichmentEndpointOptions.TimeoutSeconds` (default: 5 minutes) allows runtime adjustment without code changes.
+
+---
+
+### 017. Direct Streaming for CSV Input Parsing
+
+**Decision**: Read CSV input directly from `request.Body` using CsvHelper without buffering.
+
+**Context**: ASP.NET Core's request body is a forward-only, non-seekable stream. Need to parse CSV data efficiently without loading the entire request into memory.
+
+**Alternatives Considered**:
+
+- Buffer into `MemoryStream` first - requires ~100MB memory for large files
+- Read entire body as string with `ReadToEndAsync()` - doubles memory (bytes + string)
+- Enable request body buffering middleware - global impact, less control
+
+**Rationale**: CsvHelper supports forward-only streams, enabling true streaming directly from `request.Body`. Benefits include:
+
+- Minimal memory footprint - only one row in memory at a time
+- No buffering overhead for large file uploads
+- Immediate processing - no delay waiting for full upload
+- Better scalability under concurrent load
+
+This approach processes CSV data row-by-row as it arrives from the network, making memory usage independent of file size.
 
 ---
 
