@@ -179,9 +179,17 @@ public class TradeEnrichmentServiceTests : IDisposable
         // Assert
         result.Should().NotBeNull();
         var logRecords = _fakeLogger.Collector.GetSnapshot();
-        logRecords.Should().ContainSingle(r =>
-            r.Level == LogLevel.Warning &&
-            r.Message.Contains("888"));
+        var warningLog = logRecords.Should().ContainSingle(r => r.Level == LogLevel.Warning).Which;
+
+        // Verify all trade row data using structured logging properties (AC2)
+        // This approach is more robust than string matching - survives message format changes
+        warningLog.StructuredState.Should().NotBeNull();
+        var state = warningLog.StructuredState!.ToDictionary(x => x.Key, x => x.Value);
+
+        state.Should().ContainKey("ProductId").WhoseValue.Should().Be("888");
+        state.Should().ContainKey("Date").WhoseValue.Should().Be("20231215");
+        state.Should().ContainKey("Currency").WhoseValue.Should().Be("USD");
+        state.Should().ContainKey("Price").WhoseValue.Should().Be("10.00");
     }
 
     [Fact]
