@@ -4,6 +4,8 @@
 
 A .NET 10.0 ASP.NET Core API that enriches trade transaction data by mapping product IDs to human-readable product names.
 
+<img width="898" height="267" alt="image" src="https://github.com/user-attachments/assets/229c7e2b-cf9f-4de5-bc35-0e78a3171875" />
+
 ## Highlights
 
 - **Automatic Enrichment**: Maps cryptic product IDs (e.g., 75301) to readable names (e.g., "Widget Pro")
