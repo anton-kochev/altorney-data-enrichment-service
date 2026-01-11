@@ -19,3 +19,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Handles missing products gracefully with placeholder value
   - Supports concurrent request processing for high throughput
   - Provides enrichment summary with processing statistics
+- Enhanced missing product handling with detailed logging (US-003)
+  - Warning logs now include trade context (date, currency, price) for easier troubleshooting
+  - Duplicate warnings aggregated (each missing productId logged only once)
+  - Missing product count included in enrichment summary for reporting

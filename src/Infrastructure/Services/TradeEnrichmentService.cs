@@ -50,7 +50,7 @@ public sealed partial class TradeEnrichmentService : ITradeEnrichmentService
         else
         {
             productName = MissingProductNamePlaceholder;
-            LogMissingProductIfNeeded(productId);
+            LogMissingProductIfNeeded(productId, date, currency, price);
         }
 
         return new EnrichedTradeOutputDto
@@ -99,7 +99,7 @@ public sealed partial class TradeEnrichmentService : ITradeEnrichmentService
                 productName = MissingProductNamePlaceholder;
                 hasMissingProduct = true;
                 missingProductIds.Add(productId);
-                LogMissingProductIfNeeded(productId);
+                LogMissingProductIfNeeded(productId, date, currency, price);
             }
 
             enrichedTrades.Add(new EnrichedTradeOutputDto
@@ -181,18 +181,28 @@ public sealed partial class TradeEnrichmentService : ITradeEnrichmentService
         }
     }
 
-    private void LogMissingProductIfNeeded(int productId)
+    /// <summary>
+    /// Logs a warning for a missing product if not already logged.
+    /// </summary>
+    /// <param name="productId">The product ID that was not found.</param>
+    /// <param name="date">The validated trade date in yyyyMMdd format.</param>
+    /// <param name="currency">The validated currency code.</param>
+    /// <param name="price">The validated price as a string.</param>
+    /// <remarks>
+    /// This method expects pre-validated parameters from <see cref="TryValidateAndParse"/>.
+    /// Duplicate product IDs are logged only once per service instance.
+    /// </remarks>
+    private void LogMissingProductIfNeeded(int productId, string date, string currency, string price)
     {
-        // Only log each missing product ID once
         if (_loggedMissingProductIds.TryAdd(productId, 0))
         {
-            LogMissingProduct(productId);
+            LogMissingProduct(productId, date, currency, price);
         }
     }
 
     [LoggerMessage(
         EventId = 1,
         Level = LogLevel.Warning,
-        Message = "Product ID {ProductId} not found in product reference data, using placeholder")]
-    private partial void LogMissingProduct(int productId);
+        Message = "Product ID {ProductId} not found in product reference data. Trade: Date={Date}, Currency={Currency}, Price={Price}. Using placeholder.")]
+    private partial void LogMissingProduct(int productId, string date, string currency, string price);
 }
