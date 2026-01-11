@@ -32,13 +32,15 @@ public sealed record TradeDate
     {
         ArgumentNullException.ThrowIfNull(dateString, nameof(dateString));
 
-        if (string.IsNullOrWhiteSpace(dateString))
+        var trimmedDate = dateString.Trim();
+
+        if (string.IsNullOrEmpty(trimmedDate))
         {
-            throw new ArgumentException("Date string cannot be null or empty.", nameof(dateString));
+            throw new ArgumentException("Date string cannot be empty or contain only whitespace.", nameof(dateString));
         }
 
         // Check exact length (8 characters for yyyyMMdd)
-        if (dateString.Length != 8)
+        if (trimmedDate.Length != 8)
         {
             throw new ArgumentException("Date must be in yyyyMMdd format.", nameof(dateString));
         }
@@ -46,17 +48,17 @@ public sealed record TradeDate
         // Validate year portion (first 4 characters) to ensure format correctness
         // Years 1-999 are technically valid dates but indicate wrong format (likely DD/MM/YYYY)
         // Year 0 should be allowed to pass to date validation which will fail appropriately
-        if (!int.TryParse(dateString.Substring(0, 4), out var year) || (year > 0 && year < 1000))
+        if (!int.TryParse(trimmedDate.Substring(0, 4), out var year) || (year > 0 && year < 1000))
         {
             throw new ArgumentException("Date must be in yyyyMMdd format.", nameof(dateString));
         }
 
         // Try to parse the date using exact format
-        if (!DateOnly.TryParseExact(dateString, "yyyyMMdd", null, System.Globalization.DateTimeStyles.None, out var parsedDate))
+        if (!DateOnly.TryParseExact(trimmedDate, "yyyyMMdd", null, System.Globalization.DateTimeStyles.None, out var parsedDate))
         {
             // Check if it's a format issue or invalid date
             // If all characters are digits, it's likely an invalid date, otherwise it's a format issue
-            if (dateString.All(char.IsDigit))
+            if (trimmedDate.All(char.IsDigit))
             {
                 throw new ArgumentException("Date string does not represent a valid calendar date.", nameof(dateString));
             }

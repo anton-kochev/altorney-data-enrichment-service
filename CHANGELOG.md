@@ -19,3 +19,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Handles missing products gracefully with placeholder value
   - Supports concurrent request processing for high throughput
   - Provides enrichment summary with processing statistics
+- Field preservation with automatic whitespace trimming (US-004)
+  - Date, currency, and price fields are preserved through enrichment
+  - Leading/trailing whitespace is automatically trimmed from all fields
+  - Original field values (after trimming) are maintained in output
