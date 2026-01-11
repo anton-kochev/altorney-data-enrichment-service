@@ -215,4 +215,27 @@ Each decision follows this format:
 
 ---
 
+### 015. Response Headers for Enrichment Summary
+
+**Decision**: Return `EnrichmentSummary` statistics via `X-Enrichment-*` response headers instead of wrapping the CSV response in a JSON envelope.
+
+**Context**: The CSV enrichment endpoint needs to provide processing statistics (total rows, enriched rows, discarded rows, missing products) alongside the enriched CSV data. Need to decide how to deliver this metadata.
+
+**Alternatives Considered**:
+- JSON wrapper object containing both CSV data and summary - breaks streaming, changes Content-Type
+- Multipart response with summary and CSV parts - complex client parsing
+- Trailing summary row in CSV output - breaks standard CSV format
+- Separate endpoint to query processing results - requires correlation, adds complexity
+
+**Rationale**: HTTP response headers are the idiomatic way to provide metadata about a response. Benefits include:
+- Maintains pure CSV response body with `text/csv` Content-Type
+- Preserves streaming capability (no need to buffer entire response)
+- Machine-readable and easy to parse from any HTTP client
+- Headers are set before streaming begins, providing immediate visibility
+- Standard HTTP semantics, no custom format to document
+
+Headers used: `X-Enrichment-Total-Rows`, `X-Enrichment-Enriched-Rows`, `X-Enrichment-Discarded-Rows`, `X-Enrichment-Missing-Products`, `X-Enrichment-Missing-Product-Ids`.
+
+---
+
 <!-- Add new decisions above this line -->

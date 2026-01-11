@@ -35,7 +35,7 @@ public sealed partial class TradeEnrichmentService : ITradeEnrichmentService
         ArgumentNullException.ThrowIfNull(tradeInput);
 
         // Validate and parse input fields
-        if (!TryValidateAndParse(tradeInput, out var date, out var productId, out var currency, out var price))
+        if (!TryValidateAndParse(tradeInput, out string date, out int productId, out string currency, out string price))
         {
             return null;
         }
@@ -43,7 +43,7 @@ public sealed partial class TradeEnrichmentService : ITradeEnrichmentService
         // Look up a product name
         string productName;
 
-        if (_productLookupService.TryGetProductName(productId, out var foundName) && foundName is not null)
+        if (_productLookupService.TryGetProductName(productId, out string? foundName) && foundName is not null)
         {
             productName = foundName;
         }
@@ -75,22 +75,22 @@ public sealed partial class TradeEnrichmentService : ITradeEnrichmentService
         int rowsWithMissingProducts = 0;
         int rowsDiscarded = 0;
 
-        foreach (var trade in trades)
+        foreach (TradeInputDto trade in trades)
         {
             totalRows++;
 
             // Validate and parse input fields
-            if (!TryValidateAndParse(trade, out var date, out var productId, out var currency, out var price))
+            if (!TryValidateAndParse(trade, out string date, out int productId, out string currency, out string price))
             {
                 rowsDiscarded++;
                 continue;
             }
 
-            // Look up product name
+            // Look up a product name
             string productName;
             bool hasMissingProduct = false;
 
-            if (_productLookupService.TryGetProductName(productId, out var foundName) && foundName is not null)
+            if (_productLookupService.TryGetProductName(productId, out string? foundName) && foundName is not null)
             {
                 productName = foundName;
             }
@@ -158,7 +158,7 @@ public sealed partial class TradeEnrichmentService : ITradeEnrichmentService
         price = string.Empty;
 
         // Step 1: Guard clause for required fields (US-006)
-        var missingFields = CollectMissingFields(input);
+        List<string> missingFields = CollectMissingFields(input);
         if (missingFields.Count > 0)
         {
             LogMissingFields(

@@ -20,13 +20,18 @@ public static class DependencyInjection
             .Bind(configuration.GetSection(ProductDataOptions.SectionName))
             .ValidateOnStart();
 
+        services.AddSingleton<IValidateOptions<EnrichmentEndpointOptions>, EnrichmentEndpointOptionsValidator>();
+        services
+            .AddOptions<EnrichmentEndpointOptions>()
+            .Bind(configuration.GetSection(EnrichmentEndpointOptions.SectionName))
+            .ValidateOnStart();
+
         services.AddSingleton<CsvProductLookupService>();
         services.AddSingleton<IProductLookupService>(sp =>
             sp.GetRequiredService<CsvProductLookupService>());
 
         services.AddHostedService<ProductDataLoader>();
 
-        // Trade enrichment service - scoped to get fresh logging state per request
         services.AddScoped<ITradeEnrichmentService, TradeEnrichmentService>();
 
         return services;

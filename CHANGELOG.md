@@ -27,3 +27,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Date, currency, and price fields are preserved through enrichment
   - Leading/trailing whitespace is automatically trimmed from all fields
   - Original field values (after trimming) are maintained in output
+- CSV enrichment endpoint at POST /api/v1/enrich (US-009)
+  - Accepts trade data in CSV format with Content-Type: text/csv
+  - Returns enriched CSV with product names replacing product IDs
+  - Response includes X-Enrichment-* headers with processing statistics:
+    - X-Enrichment-Total-Rows: total rows processed
+    - X-Enrichment-Enriched-Rows: successfully enriched rows
+    - X-Enrichment-Discarded-Rows: rows discarded due to validation
+    - X-Enrichment-Missing-Products: rows with missing product mappings
+    - X-Enrichment-Missing-Product-Ids: comma-separated list of missing IDs
+  - Returns HTTP 200 for successful processing (even with some discarded rows)
+  - Returns HTTP 400 for malformed CSV or empty request body
+  - Returns HTTP 415 for unsupported content types
+  - Configurable request size limit (default: 100MB) via appsettings.json
+  - Custom CSV formatters using Sep library for high-performance parsing
