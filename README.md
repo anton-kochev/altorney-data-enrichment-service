@@ -30,7 +30,6 @@ A .NET 10.0 ASP.NET Core API that enriches trade transaction data by mapping pro
 - [Project Structure](#project-structure)
 - [Configuration](#configuration)
 - [Validation Rules](#validation-rules)
-- [Implementation Status](#implementation-status)
 - [Documentation](#documentation)
 - [CI Pipeline](#ci-pipeline)
 - [Contributing](#contributing)
@@ -172,31 +171,10 @@ Edit `src/Api/appsettings.json`:
 |-------|------|------------------|
 | `date` | yyyyMMdd format, valid calendar date | Row discarded, error logged |
 | `productId` | Positive integer (> 0) | Row discarded |
-| `currency` | Non-empty string | Row discarded, error logged |
+| `currency` | Non-empty string | Row discarded |
 | `price` | Non-negative decimal | Row discarded |
 
 Trades with valid fields but unmapped product IDs are included with "Missing Product Name" placeholder.
-
-## Implementation Status
-
-### Completed
-
-- [x] Product reference data loading at startup (US-001)
-- [x] Product ID to name mapping with O(1) lookup (US-002)
-- [x] Missing product handling with placeholder (US-003)
-- [x] Field preservation with whitespace trimming (US-004)
-- [x] Date format validation (US-005)
-- [x] Required fields validation (US-006)
-- [x] ProductId format validation (US-007)
-- [x] CSV enrichment endpoint `POST /api/v1/enrich` (US-009)
-- [x] Streaming CSV processing with CsvHelper (US-012)
-- [x] Health check endpoint `GET /health` (US-011)
-- [x] Clean Architecture with DDD patterns
-- [x] Unit tests for Domain, Infrastructure, and Api
-
-### Pending
-
-- [ ] Performance tests
 
 ## Documentation
 
@@ -204,7 +182,6 @@ Trades with valid fields but unmapped product IDs are included with "Missing Pro
 |----------|-------------|
 | [CHANGELOG.md](CHANGELOG.md) | Version history following [Keep a Changelog](https://keepachangelog.com/) format |
 | [DECISIONS.md](DECISIONS.md) | Technical decision records with context and rationale |
-| [epics-and-stories.md](epics-and-stories.md) | Product roadmap with epics and user stories |
 
 ### User Story Documentation
 
