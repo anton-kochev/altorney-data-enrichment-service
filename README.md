@@ -189,15 +189,13 @@ Trades with valid fields but unmapped product IDs are included with "Missing Pro
 - [x] ProductId format validation (US-007)
 - [x] CSV enrichment endpoint `POST /api/v1/enrich` (US-009)
 - [x] Streaming CSV processing with CsvHelper (US-012)
+- [x] Health check endpoint `GET /health` (US-011)
 - [x] Clean Architecture with DDD patterns
 - [x] Unit tests for Domain, Infrastructure, and Api
 
 ### Pending
 
-- [ ] Health check endpoint `GET /health` (US-011)
 - [ ] Performance tests
-
-See [epics-and-stories.md](epics-and-stories.md) for the complete roadmap.
 
 ## Documentation
 
@@ -220,6 +218,7 @@ Detailed implementation documentation for completed user stories:
 | [US-005](docs/US-005.md) | Date format validation |
 | [US-006](docs/US-006.md) | Required fields validation |
 | [US-009](docs/US-009.md) | CSV enrichment endpoint |
+| [US-011](docs/US-011.md) | Health check endpoint |
 
 ## CI Pipeline
 

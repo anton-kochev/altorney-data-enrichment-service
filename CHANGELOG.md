@@ -43,3 +43,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Configurable request size limit (default: 100MB)
   - Configurable request timeout (default: 5 minutes)
   - Custom CSV formatters using CsvHelper library for streaming CSV processing
+- Health check endpoint at GET /health (US-011)
+  - Returns HTTP 200 when service is healthy (product data loaded)
+  - Returns HTTP 503 when service is unhealthy (product data not loaded)
+  - JSON response includes: status, productDataLoaded, productCount, timestamp
+  - Source-generated logging at Information level (healthy) or Warning level (unhealthy)
+  - No authentication required
