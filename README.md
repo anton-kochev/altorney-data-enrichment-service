@@ -1,6 +1,7 @@
 # Trade Data Enrichment Service
 
 [![.NET](https://github.com/anton-kochev/altorney-data-enrichment-service/actions/workflows/dotnet.yml/badge.svg)](https://github.com/anton-kochev/altorney-data-enrichment-service/actions/workflows/dotnet.yml)
+[![Coverage](https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/anton-kochev/COVERAGE_GIST_ID/raw/coverage.json)](https://github.com/anton-kochev/altorney-data-enrichment-service/actions/workflows/dotnet.yml)
 
 A .NET 10.0 ASP.NET Core API that enriches trade transaction data by mapping product IDs to human-readable product names.
 
@@ -228,8 +229,16 @@ This project uses GitHub Actions for continuous integration.
 
 | Trigger | Action |
 |---------|--------|
-| Push to `main` | Build and test |
-| Pull request to `main` | Build and test |
+| Push to `main` | Build, test, coverage report |
+| Pull request to `main` | Build, test, coverage report |
+
+### Code Coverage
+
+The CI pipeline collects code coverage using [Coverlet](https://github.com/coverlet-coverage/coverlet) and generates reports with [ReportGenerator](https://github.com/danielpalme/ReportGenerator).
+
+- Coverage badge updates automatically on push to `main`
+- Coverage summary displayed in workflow job summary
+- Full coverage report available as downloadable artifact (7-day retention)
 
 ## Contributing
 

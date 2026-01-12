@@ -49,3 +49,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - JSON response includes: status, productDataLoaded, productCount, timestamp
   - Source-generated logging at Information level (healthy) or Warning level (unhealthy)
   - No authentication required
+- Code coverage reporting in GitHub Actions CI pipeline
+  - Coverlet collects coverage during test runs
+  - ReportGenerator produces markdown summary
+  - Coverage displayed in workflow job summary
+  - Full report available as downloadable artifact
+  - Dynamic coverage badge using shields.io endpoint
