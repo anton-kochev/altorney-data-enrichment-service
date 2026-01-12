@@ -1,7 +1,7 @@
 # Trade Data Enrichment Service
 
 [![.NET](https://github.com/anton-kochev/altorney-data-enrichment-service/actions/workflows/dotnet.yml/badge.svg)](https://github.com/anton-kochev/altorney-data-enrichment-service/actions/workflows/dotnet.yml)
-[![Coverage](https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/anton-kochev/COVERAGE_GIST_ID/raw/coverage.json)](https://github.com/anton-kochev/altorney-data-enrichment-service/actions/workflows/dotnet.yml)
+[![Coverage](https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/anton-kochev/afa92e5d2dd41247e2958b1ffd576b80/raw/coverage.json)](https://github.com/anton-kochev/altorney-data-enrichment-service/actions/workflows/dotnet.yml)
 
 A .NET 10.0 ASP.NET Core API that enriches trade transaction data by mapping product IDs to human-readable product names.
 
