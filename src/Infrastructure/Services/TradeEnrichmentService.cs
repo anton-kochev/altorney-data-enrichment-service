@@ -14,18 +14,18 @@ public sealed partial class TradeEnrichmentService : ITradeEnrichmentService
 {
     private const string MissingProductNamePlaceholder = "Missing Product Name";
 
-    private readonly IProductLookupService _productLookupService;
+    private readonly IProductRepository _productRepository;
     private readonly ILogger<TradeEnrichmentService> _logger;
     private readonly ConcurrentDictionary<int, byte> _loggedMissingProductIds = new();
 
     public TradeEnrichmentService(
-        IProductLookupService productLookupService,
+        IProductRepository productRepository,
         ILogger<TradeEnrichmentService> logger)
     {
-        ArgumentNullException.ThrowIfNull(productLookupService);
+        ArgumentNullException.ThrowIfNull(productRepository);
         ArgumentNullException.ThrowIfNull(logger);
 
-        _productLookupService = productLookupService;
+        _productRepository = productRepository;
         _logger = logger;
     }
 
@@ -43,7 +43,7 @@ public sealed partial class TradeEnrichmentService : ITradeEnrichmentService
         // Look up a product name
         string productName;
 
-        if (_productLookupService.TryGetProductName(productId, out string? foundName) && foundName is not null)
+        if (_productRepository.TryGetProductName(productId, out string? foundName) && foundName is not null)
         {
             productName = foundName;
         }
@@ -90,7 +90,7 @@ public sealed partial class TradeEnrichmentService : ITradeEnrichmentService
             string productName;
             bool hasMissingProduct = false;
 
-            if (_productLookupService.TryGetProductName(productId, out string? foundName) && foundName is not null)
+            if (_productRepository.TryGetProductName(productId, out string? foundName) && foundName is not null)
             {
                 productName = foundName;
             }

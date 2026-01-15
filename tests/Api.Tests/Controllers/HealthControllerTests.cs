@@ -15,14 +15,14 @@ namespace Api.Tests.Controllers;
 public class HealthControllerTests : IDisposable
 {
     private readonly FakeLogger<Api.Controllers.HealthController> _fakeLogger;
-    private readonly Mock<IProductLookupService> _mockProductLookupService;
+    private readonly Mock<IProductRepository> _mockProductRepository;
     private readonly Api.Controllers.HealthController _sut;
 
     public HealthControllerTests()
     {
         _fakeLogger = new FakeLogger<Api.Controllers.HealthController>();
-        _mockProductLookupService = new Mock<IProductLookupService>();
-        _sut = new Api.Controllers.HealthController(_fakeLogger, _mockProductLookupService.Object);
+        _mockProductRepository = new Mock<IProductRepository>();
+        _sut = new Api.Controllers.HealthController(_fakeLogger, _mockProductRepository.Object);
     }
 
     public void Dispose()
@@ -36,8 +36,8 @@ public class HealthControllerTests : IDisposable
     public void GetHealth_WhenProductDataLoaded_ReturnsOkResult()
     {
         // Arrange
-        _mockProductLookupService.Setup(p => p.IsLoaded).Returns(true);
-        _mockProductLookupService.Setup(p => p.Count).Returns(10000);
+        _mockProductRepository.Setup(p => p.IsLoaded).Returns(true);
+        _mockProductRepository.Setup(p => p.Count).Returns(10000);
 
         // Act
         var result = _sut.GetHealth();
@@ -52,8 +52,8 @@ public class HealthControllerTests : IDisposable
     public void GetHealth_WhenProductDataLoaded_ReturnsHealthyStatus()
     {
         // Arrange
-        _mockProductLookupService.Setup(p => p.IsLoaded).Returns(true);
-        _mockProductLookupService.Setup(p => p.Count).Returns(50000);
+        _mockProductRepository.Setup(p => p.IsLoaded).Returns(true);
+        _mockProductRepository.Setup(p => p.Count).Returns(50000);
 
         // Act
         var result = _sut.GetHealth();
@@ -71,8 +71,8 @@ public class HealthControllerTests : IDisposable
     {
         // Arrange
         const int expectedProductCount = 99999;
-        _mockProductLookupService.Setup(p => p.IsLoaded).Returns(true);
-        _mockProductLookupService.Setup(p => p.Count).Returns(expectedProductCount);
+        _mockProductRepository.Setup(p => p.IsLoaded).Returns(true);
+        _mockProductRepository.Setup(p => p.Count).Returns(expectedProductCount);
 
         // Act
         var result = _sut.GetHealth();
@@ -89,8 +89,8 @@ public class HealthControllerTests : IDisposable
     {
         // Arrange
         var beforeCall = DateTime.UtcNow;
-        _mockProductLookupService.Setup(p => p.IsLoaded).Returns(true);
-        _mockProductLookupService.Setup(p => p.Count).Returns(1000);
+        _mockProductRepository.Setup(p => p.IsLoaded).Returns(true);
+        _mockProductRepository.Setup(p => p.Count).Returns(1000);
 
         // Act
         var result = _sut.GetHealth();
@@ -108,8 +108,8 @@ public class HealthControllerTests : IDisposable
     public void GetHealth_WhenProductDataLoaded_LogsHealthCheckExecution()
     {
         // Arrange
-        _mockProductLookupService.Setup(p => p.IsLoaded).Returns(true);
-        _mockProductLookupService.Setup(p => p.Count).Returns(5000);
+        _mockProductRepository.Setup(p => p.IsLoaded).Returns(true);
+        _mockProductRepository.Setup(p => p.Count).Returns(5000);
 
         // Act
         _sut.GetHealth();
@@ -131,8 +131,8 @@ public class HealthControllerTests : IDisposable
     public void GetHealth_WhenProductDataLoaded_WithZeroProducts_ReturnsHealthyStatus()
     {
         // Arrange - Edge case: IsLoaded = true but Count = 0
-        _mockProductLookupService.Setup(p => p.IsLoaded).Returns(true);
-        _mockProductLookupService.Setup(p => p.Count).Returns(0);
+        _mockProductRepository.Setup(p => p.IsLoaded).Returns(true);
+        _mockProductRepository.Setup(p => p.Count).Returns(0);
 
         // Act
         var result = _sut.GetHealth();
@@ -154,8 +154,8 @@ public class HealthControllerTests : IDisposable
     public void GetHealth_WhenProductDataNotLoaded_ReturnsServiceUnavailable()
     {
         // Arrange
-        _mockProductLookupService.Setup(p => p.IsLoaded).Returns(false);
-        _mockProductLookupService.Setup(p => p.Count).Returns(0);
+        _mockProductRepository.Setup(p => p.IsLoaded).Returns(false);
+        _mockProductRepository.Setup(p => p.Count).Returns(0);
 
         // Act
         var result = _sut.GetHealth();
@@ -170,8 +170,8 @@ public class HealthControllerTests : IDisposable
     public void GetHealth_WhenProductDataNotLoaded_ReturnsUnhealthyStatus()
     {
         // Arrange
-        _mockProductLookupService.Setup(p => p.IsLoaded).Returns(false);
-        _mockProductLookupService.Setup(p => p.Count).Returns(0);
+        _mockProductRepository.Setup(p => p.IsLoaded).Returns(false);
+        _mockProductRepository.Setup(p => p.Count).Returns(0);
 
         // Act
         var result = _sut.GetHealth();
@@ -190,8 +190,8 @@ public class HealthControllerTests : IDisposable
     public void GetHealth_WhenProductDataNotLoaded_ResponseIncludesZeroProductCount()
     {
         // Arrange
-        _mockProductLookupService.Setup(p => p.IsLoaded).Returns(false);
-        _mockProductLookupService.Setup(p => p.Count).Returns(0);
+        _mockProductRepository.Setup(p => p.IsLoaded).Returns(false);
+        _mockProductRepository.Setup(p => p.Count).Returns(0);
 
         // Act
         var result = _sut.GetHealth();
@@ -208,8 +208,8 @@ public class HealthControllerTests : IDisposable
     {
         // Arrange
         var beforeCall = DateTime.UtcNow;
-        _mockProductLookupService.Setup(p => p.IsLoaded).Returns(false);
-        _mockProductLookupService.Setup(p => p.Count).Returns(0);
+        _mockProductRepository.Setup(p => p.IsLoaded).Returns(false);
+        _mockProductRepository.Setup(p => p.Count).Returns(0);
 
         // Act
         var result = _sut.GetHealth();
@@ -227,8 +227,8 @@ public class HealthControllerTests : IDisposable
     public void GetHealth_WhenProductDataNotLoaded_LogsUnhealthyStatus()
     {
         // Arrange
-        _mockProductLookupService.Setup(p => p.IsLoaded).Returns(false);
-        _mockProductLookupService.Setup(p => p.Count).Returns(0);
+        _mockProductRepository.Setup(p => p.IsLoaded).Returns(false);
+        _mockProductRepository.Setup(p => p.Count).Returns(0);
 
         // Act
         _sut.GetHealth();
@@ -253,47 +253,47 @@ public class HealthControllerTests : IDisposable
     public void GetHealth_CallsProductLookupService_IsLoadedProperty()
     {
         // Arrange
-        _mockProductLookupService.Setup(p => p.IsLoaded).Returns(true);
-        _mockProductLookupService.Setup(p => p.Count).Returns(1000);
+        _mockProductRepository.Setup(p => p.IsLoaded).Returns(true);
+        _mockProductRepository.Setup(p => p.Count).Returns(1000);
 
         // Act
         _sut.GetHealth();
 
         // Assert
-        _mockProductLookupService.Verify(p => p.IsLoaded, Times.Once);
+        _mockProductRepository.Verify(p => p.IsLoaded, Times.Once);
     }
 
     [Fact]
     public void GetHealth_CallsProductLookupService_CountProperty()
     {
         // Arrange
-        _mockProductLookupService.Setup(p => p.IsLoaded).Returns(true);
-        _mockProductLookupService.Setup(p => p.Count).Returns(2000);
+        _mockProductRepository.Setup(p => p.IsLoaded).Returns(true);
+        _mockProductRepository.Setup(p => p.Count).Returns(2000);
 
         // Act
         _sut.GetHealth();
 
         // Assert
-        _mockProductLookupService.Verify(p => p.Count, Times.Once);
+        _mockProductRepository.Verify(p => p.Count, Times.Once);
     }
 
     [Fact]
     public void GetHealth_DoesNotCallOtherProductLookupServiceMethods()
     {
         // Arrange
-        _mockProductLookupService.Setup(p => p.IsLoaded).Returns(true);
-        _mockProductLookupService.Setup(p => p.Count).Returns(3000);
+        _mockProductRepository.Setup(p => p.IsLoaded).Returns(true);
+        _mockProductRepository.Setup(p => p.Count).Returns(3000);
 
         // Act
         _sut.GetHealth();
 
         // Assert - Ensure only properties are accessed, not methods like GetProductName
-        _mockProductLookupService.Verify(
+        _mockProductRepository.Verify(
             p => p.GetProductName(It.IsAny<int>()),
             Times.Never,
             "Health check should not call GetProductName");
 
-        _mockProductLookupService.Verify(
+        _mockProductRepository.Verify(
             p => p.TryGetProductName(It.IsAny<int>(), out It.Ref<string?>.IsAny),
             Times.Never,
             "Health check should not call TryGetProductName");
@@ -307,8 +307,8 @@ public class HealthControllerTests : IDisposable
     public void GetHealth_ResponseContainsAllRequiredFields()
     {
         // Arrange
-        _mockProductLookupService.Setup(p => p.IsLoaded).Returns(true);
-        _mockProductLookupService.Setup(p => p.Count).Returns(12345);
+        _mockProductRepository.Setup(p => p.IsLoaded).Returns(true);
+        _mockProductRepository.Setup(p => p.Count).Returns(12345);
 
         // Act
         var result = _sut.GetHealth();
@@ -328,8 +328,8 @@ public class HealthControllerTests : IDisposable
     public void GetHealth_MultipleInvocations_ReturnConsistentStatus()
     {
         // Arrange
-        _mockProductLookupService.Setup(p => p.IsLoaded).Returns(true);
-        _mockProductLookupService.Setup(p => p.Count).Returns(7500);
+        _mockProductRepository.Setup(p => p.IsLoaded).Returns(true);
+        _mockProductRepository.Setup(p => p.Count).Returns(7500);
 
         // Act
         var result1 = _sut.GetHealth();

@@ -27,7 +27,7 @@ public static class DependencyInjection
             .ValidateOnStart();
 
         services.AddSingleton<CsvProductLookupService>();
-        services.AddSingleton<IProductLookupService>(sp =>
+        services.AddSingleton<IProductRepository>(sp =>
             sp.GetRequiredService<CsvProductLookupService>());
 
         services.AddHostedService<ProductDataLoader>();

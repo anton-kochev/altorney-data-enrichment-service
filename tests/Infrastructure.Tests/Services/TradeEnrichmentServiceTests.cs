@@ -11,14 +11,14 @@ namespace Infrastructure.Tests.Services;
 public class TradeEnrichmentServiceTests : IDisposable
 {
     private readonly FakeLogger<TradeEnrichmentService> _fakeLogger;
-    private readonly Mock<IProductLookupService> _mockProductLookupService;
+    private readonly Mock<IProductRepository> _mockProductRepository;
     private readonly TradeEnrichmentService _sut;
 
     public TradeEnrichmentServiceTests()
     {
         _fakeLogger = new FakeLogger<TradeEnrichmentService>();
-        _mockProductLookupService = new Mock<IProductLookupService>();
-        _sut = new TradeEnrichmentService(_mockProductLookupService.Object, _fakeLogger);
+        _mockProductRepository = new Mock<IProductRepository>();
+        _sut = new TradeEnrichmentService(_mockProductRepository.Object, _fakeLogger);
     }
 
     public void Dispose()
@@ -40,7 +40,7 @@ public class TradeEnrichmentServiceTests : IDisposable
             Price = "99.99"
         };
 
-        _mockProductLookupService
+        _mockProductRepository
             .Setup(p => p.TryGetProductName(123, out It.Ref<string?>.IsAny))
             .Returns((int id, out string? name) =>
             {
@@ -71,7 +71,7 @@ public class TradeEnrichmentServiceTests : IDisposable
             Price = "50.00"
         };
 
-        _mockProductLookupService
+        _mockProductRepository
             .Setup(p => p.TryGetProductName(456, out It.Ref<string?>.IsAny))
             .Returns((int id, out string? name) =>
             {
@@ -100,7 +100,7 @@ public class TradeEnrichmentServiceTests : IDisposable
             Price = "123.45"
         };
 
-        _mockProductLookupService
+        _mockProductRepository
             .Setup(p => p.TryGetProductName(789, out It.Ref<string?>.IsAny))
             .Returns((int id, out string? name) =>
             {
@@ -134,7 +134,7 @@ public class TradeEnrichmentServiceTests : IDisposable
             Price = "10.00"
         };
 
-        _mockProductLookupService
+        _mockProductRepository
             .Setup(p => p.TryGetProductName(999, out It.Ref<string?>.IsAny))
             .Returns((int id, out string? name) =>
             {
@@ -165,7 +165,7 @@ public class TradeEnrichmentServiceTests : IDisposable
             Price = "10.00"
         };
 
-        _mockProductLookupService
+        _mockProductRepository
             .Setup(p => p.TryGetProductName(888, out It.Ref<string?>.IsAny))
             .Returns((int id, out string? name) =>
             {
@@ -205,7 +205,7 @@ public class TradeEnrichmentServiceTests : IDisposable
             new TradeInputDto { Date = "20231215", ProductId = "333", Currency = "USD", Price = "50.00" }
         };
 
-        _mockProductLookupService
+        _mockProductRepository
             .Setup(p => p.TryGetProductName(It.IsAny<int>(), out It.Ref<string?>.IsAny))
             .Returns((int id, out string? name) =>
             {
@@ -338,7 +338,7 @@ public class TradeEnrichmentServiceTests : IDisposable
             Price = "10.00"
         };
 
-        _mockProductLookupService
+        _mockProductRepository
             .Setup(p => p.TryGetProductName(123, out It.Ref<string?>.IsAny))
             .Returns((int id, out string? name) =>
             {
@@ -365,7 +365,7 @@ public class TradeEnrichmentServiceTests : IDisposable
             Price = "-10.00"
         };
 
-        _mockProductLookupService
+        _mockProductRepository
             .Setup(p => p.TryGetProductName(123, out It.Ref<string?>.IsAny))
             .Returns((int id, out string? name) =>
             {
@@ -392,7 +392,7 @@ public class TradeEnrichmentServiceTests : IDisposable
             Price = "abc"
         };
 
-        _mockProductLookupService
+        _mockProductRepository
             .Setup(p => p.TryGetProductName(123, out It.Ref<string?>.IsAny))
             .Returns((int id, out string? name) =>
             {
@@ -422,7 +422,7 @@ public class TradeEnrichmentServiceTests : IDisposable
             new TradeInputDto { Date = "20231217", ProductId = "3", Currency = "GBP", Price = "30.00" }
         };
 
-        _mockProductLookupService
+        _mockProductRepository
             .Setup(p => p.TryGetProductName(1, out It.Ref<string?>.IsAny))
             .Returns((int id, out string? name) =>
             {
@@ -430,7 +430,7 @@ public class TradeEnrichmentServiceTests : IDisposable
                 return true;
             });
 
-        _mockProductLookupService
+        _mockProductRepository
             .Setup(p => p.TryGetProductName(2, out It.Ref<string?>.IsAny))
             .Returns((int id, out string? name) =>
             {
@@ -438,7 +438,7 @@ public class TradeEnrichmentServiceTests : IDisposable
                 return true;
             });
 
-        _mockProductLookupService
+        _mockProductRepository
             .Setup(p => p.TryGetProductName(3, out It.Ref<string?>.IsAny))
             .Returns((int id, out string? name) =>
             {
@@ -469,7 +469,7 @@ public class TradeEnrichmentServiceTests : IDisposable
             new TradeInputDto { Date = "20231218", ProductId = "abc", Currency = "USD", Price = "40.00" } // Invalid productId
         };
 
-        _mockProductLookupService
+        _mockProductRepository
             .Setup(p => p.TryGetProductName(It.IsAny<int>(), out It.Ref<string?>.IsAny))
             .Returns((int id, out string? name) =>
             {
@@ -520,7 +520,7 @@ public class TradeEnrichmentServiceTests : IDisposable
             new TradeInputDto { Date = "20231217", ProductId = "3", Currency = "GBP", Price = "30.00" }
         };
 
-        _mockProductLookupService
+        _mockProductRepository
             .Setup(p => p.TryGetProductName(It.IsAny<int>(), out It.Ref<string?>.IsAny))
             .Returns((int id, out string? name) =>
             {
@@ -546,7 +546,7 @@ public class TradeEnrichmentServiceTests : IDisposable
             new TradeInputDto { Date = "invalid", ProductId = "3", Currency = "GBP", Price = "30.00" }
         };
 
-        _mockProductLookupService
+        _mockProductRepository
             .Setup(p => p.TryGetProductName(It.IsAny<int>(), out It.Ref<string?>.IsAny))
             .Returns((int id, out string? name) =>
             {
@@ -572,7 +572,7 @@ public class TradeEnrichmentServiceTests : IDisposable
             new TradeInputDto { Date = "20231217", ProductId = "3", Currency = "GBP", Price = "30.00" }  // Missing
         };
 
-        _mockProductLookupService
+        _mockProductRepository
             .Setup(p => p.TryGetProductName(1, out It.Ref<string?>.IsAny))
             .Returns((int id, out string? name) =>
             {
@@ -580,7 +580,7 @@ public class TradeEnrichmentServiceTests : IDisposable
                 return true;
             });
 
-        _mockProductLookupService
+        _mockProductRepository
             .Setup(p => p.TryGetProductName(2, out It.Ref<string?>.IsAny))
             .Returns((int id, out string? name) =>
             {
@@ -588,7 +588,7 @@ public class TradeEnrichmentServiceTests : IDisposable
                 return false;
             });
 
-        _mockProductLookupService
+        _mockProductRepository
             .Setup(p => p.TryGetProductName(3, out It.Ref<string?>.IsAny))
             .Returns((int id, out string? name) =>
             {
@@ -615,7 +615,7 @@ public class TradeEnrichmentServiceTests : IDisposable
             new TradeInputDto { Date = "20231218", ProductId = "4", Currency = "", Price = "40.00" } // Invalid currency
         };
 
-        _mockProductLookupService
+        _mockProductRepository
             .Setup(p => p.TryGetProductName(It.IsAny<int>(), out It.Ref<string?>.IsAny))
             .Returns((int id, out string? name) =>
             {
@@ -642,7 +642,7 @@ public class TradeEnrichmentServiceTests : IDisposable
             new TradeInputDto { Date = "20231218", ProductId = "222", Currency = "USD", Price = "40.00" }  // Missing (duplicate)
         };
 
-        _mockProductLookupService
+        _mockProductRepository
             .Setup(p => p.TryGetProductName(1, out It.Ref<string?>.IsAny))
             .Returns((int id, out string? name) =>
             {
@@ -650,7 +650,7 @@ public class TradeEnrichmentServiceTests : IDisposable
                 return true;
             });
 
-        _mockProductLookupService
+        _mockProductRepository
             .Setup(p => p.TryGetProductName(222, out It.Ref<string?>.IsAny))
             .Returns((int id, out string? name) =>
             {
@@ -658,7 +658,7 @@ public class TradeEnrichmentServiceTests : IDisposable
                 return false;
             });
 
-        _mockProductLookupService
+        _mockProductRepository
             .Setup(p => p.TryGetProductName(333, out It.Ref<string?>.IsAny))
             .Returns((int id, out string? name) =>
             {
@@ -694,7 +694,7 @@ public class TradeEnrichmentServiceTests : IDisposable
             Price = inputPrice
         };
 
-        _mockProductLookupService
+        _mockProductRepository
             .Setup(p => p.TryGetProductName(123, out It.Ref<string?>.IsAny))
             .Returns((int id, out string? name) =>
             {
@@ -725,7 +725,7 @@ public class TradeEnrichmentServiceTests : IDisposable
             Price = "100.00"
         };
 
-        _mockProductLookupService
+        _mockProductRepository
             .Setup(p => p.TryGetProductName(123, out It.Ref<string?>.IsAny))
             .Returns((int id, out string? name) =>
             {
@@ -757,7 +757,7 @@ public class TradeEnrichmentServiceTests : IDisposable
             Price = "100.00"
         };
 
-        _mockProductLookupService
+        _mockProductRepository
             .Setup(p => p.TryGetProductName(123, out It.Ref<string?>.IsAny))
             .Returns((int id, out string? name) =>
             {
@@ -789,7 +789,7 @@ public class TradeEnrichmentServiceTests : IDisposable
             Price = inputPrice
         };
 
-        _mockProductLookupService
+        _mockProductRepository
             .Setup(p => p.TryGetProductName(123, out It.Ref<string?>.IsAny))
             .Returns((int id, out string? name) =>
             {
@@ -821,7 +821,7 @@ public class TradeEnrichmentServiceTests : IDisposable
             Price = "100.00"
         };
 
-        _mockProductLookupService
+        _mockProductRepository
             .Setup(p => p.TryGetProductName(123, out It.Ref<string?>.IsAny))
             .Returns((int id, out string? name) =>
             {
@@ -855,7 +855,7 @@ public class TradeEnrichmentServiceTests : IDisposable
             Price = inputPrice
         };
 
-        _mockProductLookupService
+        _mockProductRepository
             .Setup(p => p.TryGetProductName(123, out It.Ref<string?>.IsAny))
             .Returns((int id, out string? name) =>
             {
@@ -887,7 +887,7 @@ public class TradeEnrichmentServiceTests : IDisposable
             Price = "10.00"
         }).ToArray();
 
-        _mockProductLookupService
+        _mockProductRepository
             .Setup(p => p.TryGetProductName(It.IsAny<int>(), out It.Ref<string?>.IsAny))
             .Returns((int id, out string? name) =>
             {
@@ -928,7 +928,7 @@ public class TradeEnrichmentServiceTests : IDisposable
     {
         // Arrange - Create fresh logger and service to avoid shared state from other tests
         var concurrencyLogger = new FakeLogger<TradeEnrichmentService>();
-        var concurrencySut = new TradeEnrichmentService(_mockProductLookupService.Object, concurrencyLogger);
+        var concurrencySut = new TradeEnrichmentService(_mockProductRepository.Object, concurrencyLogger);
 
         var trades = Enumerable.Range(1, 100).Select(i => new TradeInputDto
         {
@@ -938,7 +938,7 @@ public class TradeEnrichmentServiceTests : IDisposable
             Price = "10.00"
         }).ToArray();
 
-        _mockProductLookupService
+        _mockProductRepository
             .Setup(p => p.TryGetProductName(It.IsAny<int>(), out It.Ref<string?>.IsAny))
             .Returns((int id, out string? name) =>
             {
@@ -988,7 +988,7 @@ public class TradeEnrichmentServiceTests : IDisposable
             new TradeInputDto { Date = "20241216", ProductId = "4", Currency = "JPY", Price = "444.44" }
         };
 
-        _mockProductLookupService
+        _mockProductRepository
             .Setup(p => p.TryGetProductName(It.IsAny<int>(), out It.Ref<string?>.IsAny))
             .Returns((int id, out string? name) =>
             {
@@ -1277,7 +1277,7 @@ public class TradeEnrichmentServiceTests : IDisposable
             new TradeInputDto { Date = "20231220", ProductId = "6", Currency = "JPY", Price = "" } // Missing Price
         };
 
-        _mockProductLookupService
+        _mockProductRepository
             .Setup(p => p.TryGetProductName(It.IsAny<int>(), out It.Ref<string?>.IsAny))
             .Returns((int id, out string? name) =>
             {
@@ -1307,7 +1307,7 @@ public class TradeEnrichmentServiceTests : IDisposable
             new TradeInputDto { Date = "20231218", ProductId = "4", Currency = "", Price = "40.00" } // Missing Currency
         };
 
-        _mockProductLookupService
+        _mockProductRepository
             .Setup(p => p.TryGetProductName(It.IsAny<int>(), out It.Ref<string?>.IsAny))
             .Returns((int id, out string? name) =>
             {
@@ -1736,7 +1736,7 @@ public class TradeEnrichmentServiceTests : IDisposable
             Price = "99.99"
         };
 
-        _mockProductLookupService
+        _mockProductRepository
             .Setup(p => p.TryGetProductName(123, out It.Ref<string?>.IsAny))
             .Returns((int id, out string? name) =>
             {
@@ -1770,7 +1770,7 @@ public class TradeEnrichmentServiceTests : IDisposable
 
         // Assert
         result.Should().BeNull();
-        _mockProductLookupService.Verify(
+        _mockProductRepository.Verify(
             p => p.TryGetProductName(It.IsAny<int>(), out It.Ref<string?>.IsAny),
             Times.Never,
             "Product lookup should not be called when date validation fails");
@@ -1862,7 +1862,7 @@ public class TradeEnrichmentServiceTests : IDisposable
             new TradeInputDto { Date = "20231332", ProductId = "3", Currency = "GBP", Price = "30.00" } // Invalid calendar
         };
 
-        _mockProductLookupService
+        _mockProductRepository
             .Setup(p => p.TryGetProductName(1, out It.Ref<string?>.IsAny))
             .Returns((int id, out string? name) =>
             {

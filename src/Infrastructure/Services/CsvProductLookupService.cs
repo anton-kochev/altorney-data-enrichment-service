@@ -4,7 +4,7 @@ using Microsoft.Extensions.Logging;
 
 namespace Infrastructure.Services;
 
-public sealed partial class CsvProductLookupService : IProductLookupService
+public sealed partial class CsvProductLookupService : IProductRepository
 {
     private readonly ILogger<CsvProductLookupService> _logger;
     private volatile FrozenDictionary<int, string> _products = FrozenDictionary<int, string>.Empty;

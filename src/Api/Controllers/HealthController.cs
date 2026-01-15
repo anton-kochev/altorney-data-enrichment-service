@@ -11,19 +11,19 @@ namespace Api.Controllers;
 public sealed partial class HealthController : ControllerBase
 {
     private readonly ILogger<HealthController> _logger;
-    private readonly IProductLookupService _productLookupService;
+    private readonly IProductRepository _productRepository;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="HealthController"/> class.
     /// </summary>
     /// <param name="logger">The logger instance.</param>
-    /// <param name="productLookupService">The product lookup service.</param>
+    /// <param name="productRepository">The product repository.</param>
     public HealthController(
         ILogger<HealthController> logger,
-        IProductLookupService productLookupService)
+        IProductRepository productRepository)
     {
         _logger = logger;
-        _productLookupService = productLookupService;
+        _productRepository = productRepository;
     }
 
     /// <summary>
@@ -36,8 +36,8 @@ public sealed partial class HealthController : ControllerBase
     [Produces("application/json")]
     public IActionResult GetHealth()
     {
-        var isLoaded = _productLookupService.IsLoaded;
-        var productCount = _productLookupService.Count;
+        var isLoaded = _productRepository.IsLoaded;
+        var productCount = _productRepository.Count;
         var status = isLoaded ? "Healthy" : "Unhealthy";
         var timestamp = DateTime.UtcNow;
 

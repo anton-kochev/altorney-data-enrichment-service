@@ -1,9 +1,9 @@
 namespace Application.Services;
 
 /// <summary>
-/// Provides product lookup operations.
+/// Repository for product data access operations.
 /// </summary>
-public interface IProductLookupService
+public interface IProductRepository
 {
     string? GetProductName(int productId);
     bool TryGetProductName(int productId, out string? productName);
