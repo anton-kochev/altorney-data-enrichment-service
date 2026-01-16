@@ -1,12 +1,12 @@
 using Application.DTOs;
 using Application.Services;
+using Domain.Constants;
 using FluentAssertions;
-using Infrastructure.Services;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Testing;
 using Moq;
 
-namespace Infrastructure.Tests.Services;
+namespace Application.Tests.Services;
 
 public class TradeEnrichmentServiceTests : IDisposable
 {
@@ -147,7 +147,7 @@ public class TradeEnrichmentServiceTests : IDisposable
 
         // Assert
         result.Should().NotBeNull();
-        result!.ProductName.Should().Be("Missing Product Name");
+        result!.ProductName.Should().Be(TradeConstants.MissingProductNamePlaceholder);
         result.Date.Should().Be("20231215");
         result.Currency.Should().Be("USD");
         result.Price.Should().Be("10.00");

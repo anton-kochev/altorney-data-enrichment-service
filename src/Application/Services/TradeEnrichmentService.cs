@@ -1,19 +1,17 @@
 using System.Collections.Concurrent;
 using System.Globalization;
 using Application.DTOs;
-using Application.Services;
+using Domain.Constants;
 using Domain.ValueObjects;
 using Microsoft.Extensions.Logging;
 
-namespace Infrastructure.Services;
+namespace Application.Services;
 
 /// <summary>
 /// Provides trade enrichment operations that map product IDs to product names.
 /// </summary>
 public sealed partial class TradeEnrichmentService : ITradeEnrichmentService
 {
-    private const string MissingProductNamePlaceholder = "Missing Product Name";
-
     private readonly IProductRepository _productRepository;
     private readonly ILogger<TradeEnrichmentService> _logger;
     private readonly ConcurrentDictionary<int, byte> _loggedMissingProductIds = new();
@@ -49,7 +47,7 @@ public sealed partial class TradeEnrichmentService : ITradeEnrichmentService
         }
         else
         {
-            productName = MissingProductNamePlaceholder;
+            productName = TradeConstants.MissingProductNamePlaceholder;
             LogMissingProductIfNeeded(productId, date, currency, price);
         }
 
@@ -96,7 +94,7 @@ public sealed partial class TradeEnrichmentService : ITradeEnrichmentService
             }
             else
             {
-                productName = MissingProductNamePlaceholder;
+                productName = TradeConstants.MissingProductNamePlaceholder;
                 hasMissingProduct = true;
                 missingProductIds.Add(productId);
                 LogMissingProductIfNeeded(productId, date, currency, price);
