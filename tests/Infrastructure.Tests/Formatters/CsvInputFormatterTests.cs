@@ -1,15 +1,13 @@
 using System.Text;
-using Api.Tests.Helpers;
+using Infrastructure.Tests.Helpers;
 using Application.DTOs;
 using FluentAssertions;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc.Formatters;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
-using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Testing;
-using Moq;
 
-namespace Api.Tests.Formatters;
+namespace Infrastructure.Tests.Formatters;
 
 /// <summary>
 /// Unit tests for CsvInputFormatter following TDD approach.
@@ -17,17 +15,15 @@ namespace Api.Tests.Formatters;
 /// </summary>
 public class CsvInputFormatterTests : IDisposable
 {
-    private readonly FakeLogger<Api.Formatters.CsvInputFormatter> _fakeLogger;
-    private readonly Mock<InputFormatterContext> _mockContext;
+    private readonly FakeLogger<Infrastructure.Formatters.CsvInputFormatter> _fakeLogger;
     private readonly DefaultHttpContext _httpContext;
     private readonly ModelStateDictionary _modelState;
 
     public CsvInputFormatterTests()
     {
-        _fakeLogger = new FakeLogger<Api.Formatters.CsvInputFormatter>();
+        _fakeLogger = new FakeLogger<Infrastructure.Formatters.CsvInputFormatter>();
         _httpContext = new DefaultHttpContext();
         _modelState = new ModelStateDictionary();
-        _mockContext = new Mock<InputFormatterContext>();
     }
 
     public void Dispose()
@@ -355,7 +351,7 @@ public class CsvInputFormatterTests : IDisposable
     /// </summary>
     private TextInputFormatter CreateFormatter()
     {
-        return new Api.Formatters.CsvInputFormatter(_fakeLogger);
+        return new Infrastructure.Formatters.CsvInputFormatter(_fakeLogger);
     }
 
     /// <summary>

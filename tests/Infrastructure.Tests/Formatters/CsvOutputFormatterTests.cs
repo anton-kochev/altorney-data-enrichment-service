@@ -1,14 +1,12 @@
 using System.Text;
-using Api.Formatters;
-using Api.Tests.Helpers;
+using Infrastructure.Formatters;
+using Infrastructure.Tests.Helpers;
 using Application.DTOs;
 using FluentAssertions;
 using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Formatters;
-using Moq;
 
-namespace Api.Tests.Formatters;
+namespace Infrastructure.Tests.Formatters;
 
 /// <summary>
 /// Tests for CsvOutputFormatter.

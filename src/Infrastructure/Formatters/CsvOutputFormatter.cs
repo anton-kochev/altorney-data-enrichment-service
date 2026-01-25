@@ -3,9 +3,10 @@ using System.Text;
 using Application.DTOs;
 using CsvHelper;
 using CsvHelper.Configuration;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc.Formatters;
 
-namespace Api.Formatters;
+namespace Infrastructure.Formatters;
 
 /// <summary>
 /// Output formatter for writing EnrichedTradeOutputDto collections as CSV using CsvHelper.

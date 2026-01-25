@@ -1,8 +1,6 @@
-using Api.Formatters;
 using Application.Configuration;
 using Infrastructure.Extensions;
 using Microsoft.AspNetCore.Http.Timeouts;
-using Microsoft.Extensions.Logging.Abstractions;
 
 WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 
@@ -35,14 +33,8 @@ builder.Services.AddRequestTimeouts(options =>
 // Add services to the container.
 builder.Services.AddInfrastructureServices(builder.Configuration);
 
-// Add controllers with custom CSV formatters
-// Note: Formatters use NullLogger since they're instantiated before the DI container is built.
-// Logging for CSV parsing errors is handled via ModelState errors returned to the client.
-builder.Services.AddControllers(options =>
-{
-    options.InputFormatters.Insert(0, new CsvInputFormatter(NullLogger<CsvInputFormatter>.Instance));
-    options.OutputFormatters.Insert(0, new CsvOutputFormatter());
-});
+// Add controllers - CSV formatters are configured via IConfigureOptions<MvcOptions> from Infrastructure
+builder.Services.AddControllers();
 
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();

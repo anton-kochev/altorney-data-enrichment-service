@@ -2,6 +2,7 @@ using Application.Configuration;
 using Application.Services;
 using Infrastructure.Configuration;
 using Infrastructure.Services;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
@@ -33,6 +34,9 @@ public static class DependencyInjection
         services.AddHostedService<ProductDataLoader>();
 
         services.AddScoped<ITradeEnrichmentService, TradeEnrichmentService>();
+
+        // Register CSV formatters configuration for MVC
+        services.AddSingleton<IConfigureOptions<MvcOptions>, CsvFormattersConfiguration>();
 
         return services;
     }

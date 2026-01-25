@@ -1,8 +1,8 @@
 using System.Collections.Concurrent;
-using System.Globalization;
 using Application.DTOs;
+using Application.Mappers;
 using Domain.Constants;
-using Domain.ValueObjects;
+using Domain.Entities;
 using Microsoft.Extensions.Logging;
 
 namespace Application.Services;
@@ -32,32 +32,37 @@ public sealed partial class TradeEnrichmentService : ITradeEnrichmentService
     {
         ArgumentNullException.ThrowIfNull(tradeInput);
 
-        // Validate and parse input fields
-        if (!TryValidateAndParse(tradeInput, out string date, out int productId, out string currency, out string price))
+        // Step 1: Map DTO to Trade domain entity (includes validation)
+        var mappingResult = TradeMapper.TryMapToTrade(tradeInput);
+        if (!mappingResult.IsSuccess)
         {
+            LogValidationFailure(mappingResult.Failure!);
             return null;
         }
 
-        // Look up a product name
-        string productName;
+        Trade trade = mappingResult.Trade!;
 
-        if (_productRepository.TryGetProductName(productId, out string? foundName) && foundName is not null)
+        // Step 2: Look up product name
+        string productName;
+        if (_productRepository.TryGetProductName(trade.ProductId.Value, out string? foundName) && foundName is not null)
         {
             productName = foundName;
         }
         else
         {
             productName = TradeConstants.MissingProductNamePlaceholder;
-            LogMissingProductIfNeeded(productId, date, currency, price);
+            LogMissingProductIfNeeded(
+                trade.ProductId.Value,
+                trade.Date.FormattedValue,
+                trade.Currency.Value,
+                mappingResult.TrimmedPrice);
         }
 
-        return new EnrichedTradeOutputDto
-        {
-            Date = date,
-            ProductName = productName,
-            Currency = currency,
-            Price = price
-        };
+        // Step 3: Create EnrichedTrade domain entity
+        var enrichedTrade = EnrichedTrade.Create(trade.Date, productName, trade.Currency, trade.Price);
+
+        // Step 4: Map to output DTO
+        return EnrichedTradeMapper.ToDto(enrichedTrade, mappingResult.TrimmedPrice);
     }
 
     /// <inheritdoc />
@@ -73,22 +78,26 @@ public sealed partial class TradeEnrichmentService : ITradeEnrichmentService
         int rowsWithMissingProducts = 0;
         int rowsDiscarded = 0;
 
-        foreach (TradeInputDto trade in trades)
+        foreach (TradeInputDto tradeInput in trades)
         {
             totalRows++;
 
-            // Validate and parse input fields
-            if (!TryValidateAndParse(trade, out string date, out int productId, out string currency, out string price))
+            // Step 1: Map DTO to Trade domain entity (includes validation)
+            var mappingResult = TradeMapper.TryMapToTrade(tradeInput);
+            if (!mappingResult.IsSuccess)
             {
+                LogValidationFailure(mappingResult.Failure!);
                 rowsDiscarded++;
                 continue;
             }
 
-            // Look up a product name
+            Trade trade = mappingResult.Trade!;
+
+            // Step 2: Look up product name
             string productName;
             bool hasMissingProduct = false;
 
-            if (_productRepository.TryGetProductName(productId, out string? foundName) && foundName is not null)
+            if (_productRepository.TryGetProductName(trade.ProductId.Value, out string? foundName) && foundName is not null)
             {
                 productName = foundName;
             }
@@ -96,17 +105,19 @@ public sealed partial class TradeEnrichmentService : ITradeEnrichmentService
             {
                 productName = TradeConstants.MissingProductNamePlaceholder;
                 hasMissingProduct = true;
-                missingProductIds.Add(productId);
-                LogMissingProductIfNeeded(productId, date, currency, price);
+                missingProductIds.Add(trade.ProductId.Value);
+                LogMissingProductIfNeeded(
+                    trade.ProductId.Value,
+                    trade.Date.FormattedValue,
+                    trade.Currency.Value,
+                    mappingResult.TrimmedPrice);
             }
 
-            enrichedTrades.Add(new EnrichedTradeOutputDto
-            {
-                Date = date,
-                ProductName = productName,
-                Currency = currency,
-                Price = price
-            });
+            // Step 3: Create EnrichedTrade domain entity
+            var enrichedTrade = EnrichedTrade.Create(trade.Date, productName, trade.Currency, trade.Price);
+
+            // Step 4: Map to output DTO
+            enrichedTrades.Add(EnrichedTradeMapper.ToDto(enrichedTrade, mappingResult.TrimmedPrice));
 
             if (hasMissingProduct)
             {
@@ -131,88 +142,33 @@ public sealed partial class TradeEnrichmentService : ITradeEnrichmentService
     }
 
     /// <summary>
-    /// Collects names of missing or empty required fields.
+    /// Logs validation failures based on the failure type.
     /// </summary>
-    private static List<string> CollectMissingFields(TradeInputDto input)
+    private void LogValidationFailure(TradeMapper.ValidationFailure failure)
     {
-        var missing = new List<string>(4);
-        if (string.IsNullOrWhiteSpace(input.Date)) missing.Add("date");
-        if (string.IsNullOrWhiteSpace(input.ProductId)) missing.Add("productId");
-        if (string.IsNullOrWhiteSpace(input.Currency)) missing.Add("currency");
-        if (string.IsNullOrWhiteSpace(input.Price)) missing.Add("price");
-        return missing;
-    }
-
-    private bool TryValidateAndParse(
-        TradeInputDto input,
-        out string dateStr,
-        out int productId,
-        out string currency,
-        out string price)
-    {
-        dateStr = string.Empty;
-        productId = 0;
-        currency = string.Empty;
-        price = string.Empty;
-
-        // Step 1: Guard clause for required fields (US-006)
-        List<string> missingFields = CollectMissingFields(input);
-        if (missingFields.Count > 0)
+        switch (failure.Type)
         {
-            LogMissingFields(
-                string.Join(", ", missingFields),
-                input.Date,
-                input.ProductId,
-                input.Currency,
-                input.Price);
-            return false;
-        }
+            case TradeMapper.ValidationFailureType.MissingFields:
+                LogMissingFields(
+                    string.Join(", ", failure.MissingFields!),
+                    failure.RawInput.Date,
+                    failure.RawInput.ProductId,
+                    failure.RawInput.Currency,
+                    failure.RawInput.Price);
+                break;
 
-        try
-        {
-            // Validate date using TradeDate value object
-            var tradeDate = TradeDate.Create(input.Date);
-            dateStr = tradeDate.FormattedValue;
-        }
-        catch (ArgumentException ex)
-        {
-            // Log date validation errors with full trade context
-            LogInvalidDateFormat(input.Date, input.ProductId, input.Currency, input.Price, ex.Message);
-            return false;
-        }
+            case TradeMapper.ValidationFailureType.InvalidDateFormat:
+                LogInvalidDateFormat(
+                    failure.RawInput.Date,
+                    failure.RawInput.ProductId,
+                    failure.RawInput.Currency,
+                    failure.RawInput.Price,
+                    failure.InvalidDateReason!);
+                break;
 
-        try
-        {
-            // Validate and parse productId
-            if (!int.TryParse(input.ProductId, NumberStyles.Integer, CultureInfo.InvariantCulture, out productId))
-            {
-                return false;
-            }
-
-            // Validate productId is positive using ProductIdentifier
-            _ = ProductIdentifier.Create(productId);
-
-            // Validate currency using the Currency value object
-            var currencyValue = Currency.Create(input.Currency);
-            currency = currencyValue.Value;
-
-            // Validate and parse price (trim first to reduce allocations)
-            string trimmedPrice = input.Price.Trim();
-            if (!decimal.TryParse(trimmedPrice, NumberStyles.Number, CultureInfo.InvariantCulture, out var priceDecimal))
-            {
-                return false;
-            }
-
-            // Validate price is non-negative using the Price value object
-            _ = Price.Create(priceDecimal);
-            price = trimmedPrice;
-
-            return true;
-        }
-        catch (ArgumentException)
-        {
-            // Other validation failures (productId, currency, price) - no logging
-            return false;
+            // Other validation failures (productId, currency, price) - no logging per original design
+            default:
+                break;
         }
     }
 

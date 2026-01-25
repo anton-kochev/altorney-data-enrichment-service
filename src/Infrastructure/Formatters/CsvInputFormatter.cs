@@ -3,10 +3,11 @@ using System.Text;
 using Application.DTOs;
 using CsvHelper;
 using CsvHelper.Configuration;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc.Formatters;
 using Microsoft.Extensions.Logging;
 
-namespace Api.Formatters;
+namespace Infrastructure.Formatters;
 
 /// <summary>
 /// Custom input formatter for parsing CSV data into TradeInputDto collections.
